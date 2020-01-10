@@ -1,16 +1,16 @@
 export function mutableRemoveUnordered<T>(arr: T[], element: T) {
-  const length = arr.length;
-  const index = arr.indexOf(element);
+  const length = arr.length
+  const index = arr.indexOf(element)
 
   if (index === -1) {
-    return false;
+    return false
   }
 
-  const last = arr.pop();
+  const last = arr.pop()
 
   if (index < length - 1) {
-    arr[index] = last as T;
+    arr[index] = last as T
   }
 
-  return true;
+  return true
 }

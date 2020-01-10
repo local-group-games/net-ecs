@@ -5,17 +5,20 @@
   "author": "Eric McDaniel <eric.g.mcdaniel@gmail.com>",
   "homepage": "",
   "license": "ISC",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "directories": {
+    "dist": "dist",
     "src": "src"
   },
   "files": [
     "src"
   ],
+  "types": "src",
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "test": "echo \"Error: run tests from root\" && exit 1"
+    "test": "echo \"Error: run tests from root\" && exit 1",
+    "build": "tsc"
   }
 }

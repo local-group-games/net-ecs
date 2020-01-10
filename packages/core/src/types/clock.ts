@@ -1,5 +1,5 @@
 export type Clock = {
-  step: number;
-  tick: number;
-  time: number;
-};
+  step: number
+  tick: number
+  time: number
+}

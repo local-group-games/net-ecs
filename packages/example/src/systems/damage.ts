@@ -1,16 +1,18 @@
-import { createSystem } from "@net-ecs/core";
-import { Health } from "../components/health";
+import { createSystem } from "@net-ecs/core"
+import { Health } from "../components/health"
 
-const query = { entities: [Health] };
+const query = { damageable: [Health] }
 
-export const damage = createSystem(query, (world, { entities }) => {
-  entities.forEach(entity => {
-    const health = world.getComponent(entity, Health);
+const DAMAGE_PER_SECOND = 10
 
-    health.value -= 20 / world.clock.tick;
+export const damage = createSystem(query, (entityAdmin, { damageable }) => {
+  for (const entity of damageable) {
+    const health = entityAdmin.getComponent(entity, Health)
+
+    health.value -= DAMAGE_PER_SECOND * (entityAdmin.clock.step / 1000)
 
     if (health.value <= 0) {
-      world.destroyEntity(entity);
+      entityAdmin.destroyEntity(entity)
     }
-  });
-});
+  }
+})

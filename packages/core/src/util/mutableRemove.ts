@@ -1,11 +1,11 @@
 export function mutableRemove<T>(arr: T[], element: T) {
-  const index = arr.indexOf(element);
+  const index = arr.indexOf(element)
 
   if (index === -1) {
-    return false;
+    return false
   }
 
-  arr.splice(index, 1);
+  arr.splice(index, 1)
 
-  return true;
+  return true
 }

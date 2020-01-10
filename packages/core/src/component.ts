@@ -1,36 +1,17 @@
-import { ArgumentsType } from "./types/util";
+export type ComponentType = string | number
 
 export type Component<
-  ComponentType extends string = string,
-  Props extends {} = {}
+  T extends ComponentType = ComponentType,
+  P extends {} = {}
 > = {
-  readonly $type: ComponentType;
-} & Props;
+  readonly $type: T
+} & P
 
-export interface ComponentFactory<
-  ComponentType extends string = string,
-  Props extends {} = any
-> {
-  (...args: any[]): Component<ComponentType, Props>;
-  $type: string;
+export interface ComponentFactory<C extends Component = Component> {
+  (...args: any[]): C
+  $type: ComponentType
 }
 
 export type ComponentOfFactory<
-  Factory extends ComponentFactory
-> = Factory extends ComponentFactory<infer _, infer Props> ? Props : never;
-
-export function createComponentFactory<
-  ComponentType extends string,
-  GetProps extends (...args: any[]) => any
->(type: ComponentType, getProps: GetProps) {
-  const componentFactory = (
-    ...args: ArgumentsType<GetProps>
-  ): Component<ComponentType, ReturnType<GetProps>> => ({
-    ...getProps(...args),
-    $type: type
-  });
-
-  componentFactory.$type = type;
-
-  return componentFactory;
-}
+  F extends ComponentFactory
+> = F extends ComponentFactory<infer C> ? C : never

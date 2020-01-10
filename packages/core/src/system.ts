@@ -1,6 +1,6 @@
 import { ComponentFactory } from "./component";
 import { Entity } from "./entity";
-import { World } from "./world";
+import { EntityAdmin } from "./entityAdmin";
 
 export type ComponentSelector<
   F extends ComponentFactory = ComponentFactory
@@ -15,13 +15,13 @@ export type SystemQueryResult<Q extends SystemQuery = SystemQuery> = {
 };
 
 export type System<Q extends SystemQuery = SystemQuery> = {
-  update(world: World, queryResult: SystemQueryResult<Q>): void;
+  update(world: EntityAdmin, queryResult: SystemQueryResult<Q>): void;
   query: Q;
 };
 
 export function createSystem<Q extends SystemQuery>(
   query: Q,
-  update: (world: World, queryResult: SystemQueryResult<Q>) => void
+  update: (world: EntityAdmin, queryResult: SystemQueryResult<Q>) => void
 ): System<Q> {
   return { update, query };
 }

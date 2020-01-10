@@ -1,27 +1,24 @@
-import { createWorld } from "@net-ecs/core";
-import * as components from "./components";
-import * as systems from "./systems";
-import { Transform } from "./components";
+import * as components from "./components"
+import { entityAdmin } from "./entityAdmin"
+import * as systems from "./systems"
 
-const world = createWorld([systems.damage, systems.movement]);
-const health = components.Health(100);
-const transform = components.Transform(1, 1);
-const entity = world.createEntity(0, [health, transform]);
+const health = components.Health(100)
+const transform = components.Transform(1, 1)
 
-let previousTime: number = Date.now();
+entityAdmin.createEntity(health, transform)
+entityAdmin.createEntity(health, transform)
+
+entityAdmin.addSystem(systems.damage)
+entityAdmin.addSystem(systems.movement)
+
+let previousTime: number = Date.now()
 
 setInterval(() => {
-  const now = Date.now();
-  const timeStep = now - previousTime;
-
-  world.tick(timeStep);
-
-  console.log(world.tryGetComponent(entity, Transform));
-
-  previousTime = now;
-}, (1 / 60) * 1000);
-
-(window as any).world = world;
-(window as any).components = components;
-(window as any).health = health;
-(window as any).transform = transform;
+  const now = performance.now()
+  const timeStep = now - previousTime
+  entityAdmin.tick(timeStep)
+  previousTime = now
+}, (1 / 60) * 1000)
+// ;(window as any).components = components
+// ;(window as any).health = health
+// ;(window as any).transform = transform

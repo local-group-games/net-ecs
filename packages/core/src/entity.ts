@@ -1,1 +1,1 @@
-export type Entity = number;
+export type Entity = number
