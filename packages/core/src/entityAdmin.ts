@@ -95,6 +95,16 @@ export function createEntityAdmin() {
     }
   }
 
+  function unregisterEntity(entity: Entity) {
+    for (const componentType in componentMap) {
+      const component = componentMap[componentType][entity]
+
+      if (component) {
+        removeComponentFromEntity(entity, component)
+      }
+    }
+  }
+
   function tick(timeStep: number) {
     clock.step = timeStep
     clock.tick += 1
@@ -109,21 +119,22 @@ export function createEntityAdmin() {
       }
     }
 
-    tags[EntityTag.ComponentsModified].forEach(updateAllQueriesForEntity)
-    tags[EntityTag.ComponentsModified].clear()
-
-    tags[EntityTag.Deleted].forEach(entity => {
-      for (const componentType in componentMap) {
-        const component = componentMap[componentType][entity]
-
-        if (component) {
-          removeComponentFromEntity(entity, component)
-        }
-      }
-
+    for (const entity of tags[EntityTag.Added]) {
       updateAllQueriesForEntity(entity)
-    })
+    }
+
+    for (const entity of tags[EntityTag.ComponentsModified]) {
+      updateAllQueriesForEntity(entity)
+    }
+
+    for (const entity of tags[EntityTag.Deleted]) {
+      unregisterEntity(entity)
+      updateAllQueriesForEntity(entity)
+    }
+
+    tags[EntityTag.Added].clear()
     tags[EntityTag.Deleted].clear()
+    tags[EntityTag.ComponentsModified].clear()
   }
 
   function createEntity(...entityComponents: Component[]) {
@@ -175,7 +186,7 @@ export function createEntityAdmin() {
     let release = true
 
     for (const entityId in map) {
-      if (componentMap[type][entityId] === component) {
+      if (map[entityId] === component) {
         release = false
         break
       }

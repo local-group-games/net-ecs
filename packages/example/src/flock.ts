@@ -2,7 +2,7 @@ import * as PIXI from "pixi.js"
 import Victor from "victor"
 import { createEntityAdmin, createSystem, Entity } from "@net-ecs/core"
 
-const NUMBER_OF_BOIDS = 2000
+const NUMBER_OF_BOIDS = 100
 const SPEED = 50
 const NEAR = 40
 const FAR = 100
