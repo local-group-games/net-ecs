@@ -41,10 +41,11 @@ export function createEntityAdmin() {
 
   const entities = new Set<Entity>()
   const componentMap: {
-    [componentType: string]: { [entity: number]: Component }
+    [componentType: string]: { [entity: number]: Component | null }
   } = {}
-  const systemQueryResults = new WeakMap<System, SystemQueryResult>()
+  const componentPools: { [key: string]: StackPool<Component> } = {}
   const systems: System[] = []
+  const systemQueryResults = new WeakMap<System, SystemQueryResult>()
   const tags = {
     [EntityTag.Added]: new Set<Entity>(),
     [EntityTag.ComponentsModified]: new Set<Entity>(),
@@ -147,11 +148,11 @@ export function createEntityAdmin() {
   }
 
   function addComponentToEntity(entity: Entity, component: Component) {
-    const { $type } = component
-    const map = componentMap[$type]
+    const { type } = component
+    const map = componentMap[type]
 
     if (!map) {
-      throw new Error(`Component ${$type} has not been registered.`)
+      throw new Error(`Component ${type} has not been registered.`)
     }
 
     map[entity] = component
@@ -159,29 +160,29 @@ export function createEntityAdmin() {
   }
 
   function removeComponentFromEntity(entity: Entity, component: Component) {
-    const { $type } = component
-    const map = componentMap[$type]
+    const { type } = component
+    const map = componentMap[type]
 
     if (!map[entity]) {
       throw new Error(
-        `Attempted to remove component ${component.$type} to unregistered entity ${entity}.`,
+        `Attempted to remove component ${component.type} to unregistered entity ${entity}.`,
       )
     }
 
-    delete componentMap[component.$type][entity]
+    map[entity] = null
     tags[EntityTag.ComponentsModified].add(entity)
 
     let release = true
 
     for (const entityId in map) {
-      if (componentMap[$type][entityId] === component) {
+      if (componentMap[type][entityId] === component) {
         release = false
         break
       }
     }
 
     if (release) {
-      const pool = componentPools.get($type)!
+      const pool = componentPools[type]
       pool.release(component)
     }
 
@@ -221,8 +222,6 @@ export function createEntityAdmin() {
     }
   }
 
-  const componentPools = new Map<ComponentType, StackPool<Component>>()
-
   function createComponentFactory<
     T extends ComponentType,
     D extends {},
@@ -235,7 +234,7 @@ export function createEntityAdmin() {
   ): ComponentFactory<Component<T, D>> {
     const reset = (obj: any) => {
       Object.assign(obj, defaults)
-      ;(obj as any).$type = type
+      ;(obj as any).type = type
 
       return obj
     }
@@ -259,8 +258,7 @@ export function createEntityAdmin() {
     }
 
     componentMap[type] = {}
-
-    componentPools.set(type, componentPool)
+    componentPools[type] = componentPool
     componentFactory.$type = type
 
     return componentFactory

@@ -2,7 +2,7 @@ import * as PIXI from "pixi.js"
 import Victor from "victor"
 import { createEntityAdmin, createSystem, Entity } from "@net-ecs/core"
 
-const NUMBER_OF_BOIDS = 100
+const NUMBER_OF_BOIDS = 2000
 const SPEED = 50
 const NEAR = 40
 const FAR = 100
@@ -85,11 +85,14 @@ const Boid = world.createComponentFactory(
 const movingSystem = createSystem(
   { entities: [Position, Velocity] },
   (world, { entities }) => {
-    entities.forEach(entity => {
-      const position = world.getComponent(entity, Position)!
-      const velocity = world.getComponent(entity, Velocity)!
+    for (let i = 0; i < entities.length; i++) {
+      const entity = entities[i]
+      const position = world.getComponent(entity, Position)
+      const velocity = world.getComponent(entity, Velocity)
+
       position.x += velocity.x * context.dt * SPEED
       position.y += velocity.y * context.dt * SPEED
+
       if (position.x < 0) {
         position.x = position.x + 800
       } else if (position.x > 800) {
@@ -100,61 +103,96 @@ const movingSystem = createSystem(
       } else if (position.y > 600) {
         position.y = position.y - 600
       }
-    })
+    }
   },
 )
+
+const v1 = new Victor(0, 0)
+const v2 = new Victor(0, 0)
 
 const neighborSystem = createSystem(
   { entities: [Position, Neighbors] },
   (world, { entities }) => {
-    entities.forEach(entity => {
-      const neighbors = world.getComponent(entity, Neighbors)!
+    for (let i = 0; i < entities.length; i++) {
+      const entity = entities[i]
+      const neighbors = world.tryGetComponent(entity, Neighbors)
+      const position = world.getComponent(entity, Position)
+
+      if (!neighbors) {
+        continue
+      }
+
       neighbors.near.length = 0
       neighbors.far.length = 0
-      const position = world.getComponent(entity, Position)!
-      const v1 = new Victor(position.x, position.y)
-      entities.forEach(other => {
+
+      v1.x = position.x
+      v1.y = position.y
+
+      for (let i = 0; i < entities.length; i++) {
+        const other = entities[i]
+
         if (other === entity) {
-          return
+          continue
         }
-        const otherPosition = world.getComponent(other, Position)!
-        const v2 = new Victor(otherPosition.x, otherPosition.y)
+
+        const otherPosition = world.getComponent(other, Position)
+
+        v2.x = otherPosition.x
+        v2.y = otherPosition.y
+
         const distance = v1.distance(v2)
+
         if (distance <= FAR) {
           neighbors.far.push(other)
         }
         if (distance <= NEAR) {
           neighbors.near.push(other)
         }
-      })
-    })
+      }
+    }
   },
 )
+
+const cohesion = new Victor(0, 0)
+const separation = new Victor(0, 0)
+const alignment = new Victor(0, 0)
+const normalizedVelocity = new Victor(0, 0)
+
+const _sum = { x: 0, y: 0 }
+const _sum2 = { x: 0, y: 0 }
 
 const boidSystem = createSystem(
   { entities: [Boid, Neighbors, Position, Velocity] },
   (world, { entities }) => {
-    entities.forEach(entity => {
+    for (let i = 0; i < entities.length; i++) {
+      const entity = entities[i]
       const boid = world.getComponent(entity, Boid)
       const position = world.getComponent(entity, Position)
-      const neighbors = world.getComponent(entity, Neighbors)
+      const neighbors = world.tryGetComponent(entity, Neighbors)
+
+      if (!neighbors) {
+        continue
+      }
+
       const velocity = world.getComponent(entity, Velocity)
       {
-        const sum = neighbors.far.reduce(
-          (sum, neighbor) => {
-            const position = world.getComponent(neighbor, Position)
-            sum.x += position.x
-            sum.y += position.y
-            return sum
-          },
-          { x: 0, y: 0 },
-        )
         const numberOfNeighbors = neighbors.far.length
-        const cohesion = new Victor(
-          sum.x / numberOfNeighbors,
-          sum.y / numberOfNeighbors,
-        ).subtract(new Victor(position.x, position.y))
-        if (sum.x === 0 && sum.y === 0) {
+
+        _sum.x = 0
+        _sum.y = 0
+
+        for (let i = 0; i < numberOfNeighbors; i++) {
+          const position = world.getComponent(neighbors.far[i], Position)
+          _sum.x += position.x
+          _sum.y += position.y
+        }
+
+        cohesion.x = _sum.x / numberOfNeighbors
+        cohesion.y = _sum.y / numberOfNeighbors
+        cohesion.subtractScalarX(position.x)
+        cohesion.subtractScalarY(position.y)
+
+        if (_sum.x === 0 && _sum.y === 0) {
           boid.cohesionX = 0
           boid.cohesionY = 0
         } else {
@@ -163,21 +201,23 @@ const boidSystem = createSystem(
         }
       }
       {
-        const sum = neighbors.near.reduce(
-          (sum, neighbor) => {
-            const position = world.getComponent(neighbor, Position)
-            sum.x += position.x
-            sum.y += position.y
-            return sum
-          },
-          { x: 0, y: 0 },
-        )
         const numberOfNeighbors = neighbors.near.length
-        const separation = new Victor(
-          sum.x / numberOfNeighbors,
-          sum.y / numberOfNeighbors,
-        ).subtract(new Victor(position.x, position.y))
-        if (sum.x === 0 && sum.y === 0) {
+
+        _sum2.x = 0
+        _sum2.y = 0
+
+        for (let i = 0; i < numberOfNeighbors; i++) {
+          const position = world.getComponent(neighbors.near[i], Position)
+          _sum2.x += position.x
+          _sum2.y += position.y
+        }
+
+        separation.x = _sum2.x / numberOfNeighbors
+        separation.y = _sum2.y / numberOfNeighbors
+        separation.subtractScalarX(position.x)
+        separation.subtractScalarY(position.y)
+
+        if (_sum2.x === 0 && _sum2.y === 0) {
           boid.separationX = 0
           boid.separationY = 0
         } else {
@@ -186,10 +226,15 @@ const boidSystem = createSystem(
         }
       }
       {
-        const alignment = new Victor(velocity.x, velocity.y).normalize()
+        alignment.x = velocity.x
+        alignment.y = velocity.y
+        alignment.normalize()
+
         for (const neighbor of neighbors.far) {
           const velocity = world.getComponent(neighbor, Velocity)!
-          alignment.add(new Victor(velocity.x, velocity.y).normalize())
+          alignment.addScalarX(velocity.x)
+          alignment.addScalarY(velocity.y)
+          alignment.normalize()
         }
         boid.alignmentX = alignment.normalize().x
         boid.alignmentY = alignment.y
@@ -200,95 +245,37 @@ const boidSystem = createSystem(
       velocity.y += boid.separationY * SEPARATION_WEIGHT
       velocity.x += boid.alignmentX * ALIGNMENT_WEIGHT
       velocity.y += boid.alignmentY * ALIGNMENT_WEIGHT
-      const normalizedVelocity = new Victor(velocity.x, velocity.y).normalize()
+      normalizedVelocity.x = velocity.x
+      normalizedVelocity.y = velocity.y
+      normalizedVelocity.normalize()
       velocity.x = normalizedVelocity.x
       velocity.y = normalizedVelocity.y
-    })
+    }
   },
 )
 
-//eslint-disable-next-line no-unused-vars
-// const debugSystem = new flock.System(
-//   entities => {
-//     entities.forEach(entity => {
-//       const position = entity.getComponent(Position)!
-//       const boid = entity.getComponent(Boid)!
-//       {
-//         graphics.lineStyle(1, 0xffffff, 0.25)
-//         graphics.drawCircle(position.value.x, position.value.y, FAR)
-//         graphics.endFill()
-//       }
-//       {
-//         graphics.lineStyle(1, 0xffffff, 0.25)
-//         graphics.drawCircle(position.value.x, position.value.y, NEAR)
-//         graphics.endFill()
-//       }
-//       {
-//         graphics.lineStyle(1, 0xff0000)
-//         graphics.drawCircle(position.value.x, position.value.y, 3)
-//         graphics.endFill()
-//       }
-//       {
-//         const velocity = entity.getComponent(Velocity)!
-//         const v = new Victor(velocity.value.x, velocity.value.y)
-//           .normalize()
-//           .multiply(new Victor(10, 10))
-//         graphics.lineStyle(1, 0xffffff, 1)
-//         graphics.moveTo(position.value.x, position.value.y)
-//         graphics.lineTo(position.value.x + v.x, position.value.y + v.y)
-//       }
-//       {
-//         const alignment = boid.value.alignment
-//         const a = new Victor(alignment.x, alignment.y).multiply(
-//           new Victor(10, 10),
-//         )
-//         graphics.lineStyle(1, 0x0000ff, 1)
-//         graphics.moveTo(position.value.x, position.value.y)
-//         graphics.lineTo(position.value.x + a.x, position.value.y + a.y)
-//       }
-//       {
-//         const cohesion = boid.value.cohesion
-//         const c = new Victor(cohesion.x, cohesion.y).multiply(
-//           new Victor(10, 10),
-//         )
-//         graphics.lineStyle(1, 0x00ff00, 1)
-//         graphics.moveTo(position.value.x, position.value.y)
-//         graphics.lineTo(position.value.x + c.x, position.value.y + c.y)
-//       }
-//       {
-//         const separation = boid.value.separation
-//         const s = new Victor(separation.x, separation.y).multiply(
-//           new Victor(10, 10),
-//         )
-//         graphics.lineStyle(1, 0xffff00, 1)
-//         graphics.moveTo(position.value.x, position.value.y)
-//         graphics.lineTo(position.value.x + s.x, position.value.y + s.y)
-//       }
-//     })
-//   },
-//   [Boid, Position, Velocity],
-// )
+const v = new Victor(0, 0)
 
 const renderSystem = createSystem(
   { entities: [Position, Velocity] },
   (world, { entities }) => {
     graphics.clear()
     graphics.lineStyle(1, 0xffffff)
-    entities.forEach(entity => {
+
+    for (let i = 0; i < entities.length; i++) {
+      const entity = entities[i]
+      const velocity = world.getComponent(entity, Velocity)
       const position = world.getComponent(entity, Position)
-      {
-        graphics.drawCircle(position.x, position.y, 4)
-      }
-      {
-        const velocity = world.getComponent(entity, Velocity)
-        const v = new Victor(velocity.x, velocity.y)
-          .normalize()
-          .multiply(new Victor(10, 10))
-        graphics.lineStyle(1, 0xffffff, 1)
-        graphics.moveTo(position.x, position.y)
-        graphics.lineTo(position.x + v.x, position.y + v.y)
-      }
-    })
+
+      graphics.drawCircle(position.x, position.y, 4)
+      v.x = velocity.x
+      v.y = velocity.y
+      v.normalize()
+      v.multiplyScalar(10)
+      graphics.lineStyle(1, 0xffffff, 1)
+      graphics.moveTo(position.x, position.y)
+      graphics.lineTo(position.x + v.x, position.y + v.y)
+    }
   },
 )
 
@@ -330,11 +317,10 @@ const context = {
 app.ticker.add(() => {
   context.dt = app.ticker.deltaMS / 1000
   context.ticks = context.ticks + 1
+
   if (context.ticks % 60 === 0) {
     console.log(Math.floor(app.ticker.FPS))
   }
-
-  // debugSystem.run(world);
 
   world.tick(context.dt)
 })
@@ -347,3 +333,15 @@ document.addEventListener("keydown", () => {
 document.addEventListener("click", () => {
   for (let i = 0; i < 10; i++) addBoid()
 })
+
+// setInterval(() => {
+//   for (let i = 0; i < entities.length; i++) {
+//     const component = world.tryGetComponent(entities[i], Neighbors)
+
+//     if (component) {
+//       world.removeComponentFromEntity(entities[i], component)
+//     } else {
+//       world.addComponentToEntity(entities[i], Neighbors())
+//     }
+//   }
+// }, 1000)

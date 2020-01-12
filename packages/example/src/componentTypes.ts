@@ -1,4 +1,4 @@
-export enum ComponentTypes {
-  Health,
-  Transform,
+export const ComponentTypes = {
+  Health: "health",
+  Transform: "transform",
 }

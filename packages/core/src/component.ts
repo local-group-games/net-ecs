@@ -1,10 +1,10 @@
-export type ComponentType = string | number
+export type ComponentType = string
 
 export type Component<
   T extends ComponentType = ComponentType,
   P extends {} = {}
 > = {
-  readonly $type: T
+  readonly type: T
 } & P
 
 export interface ComponentFactory<C extends Component = Component> {
