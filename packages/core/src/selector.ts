@@ -1,6 +1,6 @@
 import { ComponentFactory } from "./component"
 
-enum SelectorType {
+export enum SelectorType {
   Without,
   With,
   Added,
@@ -8,23 +8,23 @@ enum SelectorType {
   Changed,
 }
 
-export type Selector = {
-  type: SelectorType
-  componentType: string
+export type Selector<
+  T extends SelectorType = SelectorType,
+  F extends ComponentFactory = ComponentFactory
+> = {
+  selectorType: T
+  componentFactory: F
 }
 
-export function Without(componentFactory: ComponentFactory) {
-  return { type: SelectorType.Without, componentType: componentFactory.$type }
+function createSelector<T extends SelectorType, F extends ComponentFactory>(
+  selectorType: T,
+) {
+  return (componentFactory: F) =>
+    ({ selectorType, componentFactory } as Selector<T, F>)
 }
-export function With(componentFactory: ComponentFactory) {
-  return { type: SelectorType.With, componentType: componentFactory.$type }
-}
-export function Added(componentFactory: ComponentFactory) {
-  return { type: SelectorType.Added, componentType: componentFactory.$type }
-}
-export function Removed(componentFactory: ComponentFactory) {
-  return { type: SelectorType.Removed, componentType: componentFactory.$type }
-}
-export function Changed(componentFactory: ComponentFactory) {
-  return { type: SelectorType.Changed, componentType: componentFactory.$type }
-}
+
+export const Without = createSelector(SelectorType.Without)
+export const With = createSelector(SelectorType.With)
+export const Added = createSelector(SelectorType.Added)
+export const Removed = createSelector(SelectorType.Removed)
+export const Changed = createSelector(SelectorType.Changed)

@@ -1,7 +1,7 @@
-import { createSystem } from "@net-ecs/core"
+import { createSystem, With } from "@net-ecs/core"
 import { Transform } from "../components/transform"
 
-const query = { moving: [Transform] }
+const query = { moving: [With(Transform)] }
 
 export const movement = createSystem(query, (entityAdmin, { moving }) => {
   for (const entity of moving) {

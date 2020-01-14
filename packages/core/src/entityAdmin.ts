@@ -6,6 +6,7 @@ import {
 } from "./component"
 import { Entity } from "./entity"
 import { createStackPool, StackPool } from "./pool/stackPool"
+import { Selector, SelectorType } from "./selector"
 import { System, SystemQueryResult } from "./system"
 import { Clock } from "./types/clock"
 import {
@@ -27,8 +28,8 @@ function buildInitialSystemQueryResults(system: System) {
 
 enum EntityTag {
   Added,
-  ComponentsModified,
-  Updated,
+  ComponentsChanged,
+  Changed,
   Deleted,
 }
 
@@ -46,10 +47,11 @@ export function createEntityAdmin() {
   const componentPools: { [key: string]: StackPool<Component> } = {}
   const systems: System[] = []
   const systemQueryResults = new WeakMap<System, SystemQueryResult>()
+  const updateNextTick = new Set<Entity>()
   const tags = {
     [EntityTag.Added]: new Set<Entity>(),
-    [EntityTag.ComponentsModified]: new Set<Entity>(),
-    [EntityTag.Updated]: new Set<Entity>(),
+    [EntityTag.ComponentsChanged]: new Set<Entity>(),
+    [EntityTag.Changed]: new Set<Entity>(),
     [EntityTag.Deleted]: new Set<Entity>(),
   }
 
@@ -68,16 +70,37 @@ export function createEntityAdmin() {
     mutableRemove(systems, system)
   }
 
+  function doQuery(selector: Selector, entity: Entity) {
+    switch (selector.selectorType) {
+      case SelectorType.Added:
+        return tags[EntityTag.Added].has(entity)
+      case SelectorType.Removed:
+        return tags[EntityTag.Deleted].has(entity)
+      case SelectorType.Changed:
+        return tags[EntityTag.Changed].has(entity)
+      case SelectorType.With:
+      case SelectorType.Without: {
+        const components = componentMap[selector.componentFactory.$type][entity]
+        const hasComponents = components !== null && components !== undefined
+
+        return selector.selectorType === SelectorType.With
+          ? hasComponents
+          : !hasComponents
+      }
+    }
+
+    return false
+  }
+
   function updateQueryForEntity(system: System, entity: Entity) {
     const results = systemQueryResults.get(system)!
+    const runQueryWithEntity = (selector: Selector) => doQuery(selector, entity)
 
     for (const queryName in system.query) {
-      const selector = system.query[queryName]
+      const selectors = system.query[queryName]
       const selectorResults = results[queryName]
       const isSelected = contains(selectorResults, entity)
-      const isQueryHit = selector.every(
-        factory => componentMap[factory.$type][entity],
-      )
+      const isQueryHit = selectors.every(runQueryWithEntity)
 
       if (isQueryHit && !isSelected) {
         selectorResults.push(entity)
@@ -106,6 +129,25 @@ export function createEntityAdmin() {
   }
 
   function tick(timeStep: number) {
+    for (const entity of tags[EntityTag.Added]) {
+      updateAllQueriesForEntity(entity)
+      updateNextTick.add(entity)
+    }
+
+    for (const entity of tags[EntityTag.Deleted]) {
+      unregisterEntity(entity)
+      updateAllQueriesForEntity(entity)
+      updateNextTick.add(entity)
+    }
+
+    for (const entity of tags[EntityTag.ComponentsChanged]) {
+      updateAllQueriesForEntity(entity)
+    }
+
+    tags[EntityTag.Added].clear()
+    tags[EntityTag.Deleted].clear()
+    tags[EntityTag.ComponentsChanged].clear()
+
     clock.step = timeStep
     clock.tick += 1
     clock.time += timeStep
@@ -119,22 +161,11 @@ export function createEntityAdmin() {
       }
     }
 
-    for (const entity of tags[EntityTag.Added]) {
+    for (const entity of updateNextTick) {
       updateAllQueriesForEntity(entity)
     }
 
-    for (const entity of tags[EntityTag.ComponentsModified]) {
-      updateAllQueriesForEntity(entity)
-    }
-
-    for (const entity of tags[EntityTag.Deleted]) {
-      unregisterEntity(entity)
-      updateAllQueriesForEntity(entity)
-    }
-
-    tags[EntityTag.Added].clear()
-    tags[EntityTag.Deleted].clear()
-    tags[EntityTag.ComponentsModified].clear()
+    updateNextTick.clear()
   }
 
   function createEntity(...entityComponents: Component[]) {
@@ -153,6 +184,7 @@ export function createEntityAdmin() {
 
   function destroyEntity(entity: Entity) {
     entities.delete(entity)
+
     tags[EntityTag.Deleted].add(entity)
 
     return entity
@@ -167,7 +199,8 @@ export function createEntityAdmin() {
     }
 
     map[entity] = component
-    tags[EntityTag.ComponentsModified].add(entity)
+
+    tags[EntityTag.ComponentsChanged].add(entity)
   }
 
   function removeComponentFromEntity(entity: Entity, component: Component) {
@@ -181,7 +214,7 @@ export function createEntityAdmin() {
     }
 
     map[entity] = null
-    tags[EntityTag.ComponentsModified].add(entity)
+    tags[EntityTag.ComponentsChanged].add(entity)
 
     let release = true
 
@@ -218,8 +251,20 @@ export function createEntityAdmin() {
     entity: Entity,
     componentFactory: F,
   ) {
-    tags[EntityTag.ComponentsModified].add(entity)
+    tags[EntityTag.ComponentsChanged].add(entity)
+
     getComponent(entity, componentFactory)
+  }
+
+  function tryGetMutableComponent<F extends ComponentFactory>(
+    entity: Entity,
+    componentFactory: F,
+  ) {
+    try {
+      return getMutableComponent(entity, componentFactory)
+    } catch {
+      return null
+    }
   }
 
   function tryGetComponent<F extends ComponentFactory>(
@@ -285,7 +330,9 @@ export function createEntityAdmin() {
     addComponentToEntity,
     removeComponentFromEntity,
     getComponent,
+    getMutableComponent,
     tryGetComponent,
+    tryGetMutableComponent,
     createComponentFactory,
   }
 

@@ -1,8 +1,15 @@
+import {
+  Added,
+  createEntityAdmin,
+  createSystem,
+  Entity,
+  With,
+  Removed,
+} from "@net-ecs/core"
 import * as PIXI from "pixi.js"
 import Victor from "victor"
-import { createEntityAdmin, createSystem, Entity } from "@net-ecs/core"
 
-const NUMBER_OF_BOIDS = 100
+const NUMBER_OF_BOIDS = 1
 const SPEED = 50
 const NEAR = 40
 const FAR = 100
@@ -83,7 +90,7 @@ const Boid = world.createComponentFactory(
 )
 
 const movingSystem = createSystem(
-  { entities: [Position, Velocity] },
+  { entities: [With(Position), With(Velocity)] },
   (world, { entities }) => {
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
@@ -111,7 +118,7 @@ const v1 = new Victor(0, 0)
 const v2 = new Victor(0, 0)
 
 const neighborSystem = createSystem(
-  { entities: [Position, Neighbors] },
+  { entities: [With(Position), With(Neighbors)] },
   (world, { entities }) => {
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
@@ -162,7 +169,7 @@ const _sum = { x: 0, y: 0 }
 const _sum2 = { x: 0, y: 0 }
 
 const boidSystem = createSystem(
-  { entities: [Boid, Neighbors, Position, Velocity] },
+  { entities: [With(Boid), With(Neighbors), With(Position), With(Velocity)] },
   (world, { entities }) => {
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
@@ -257,7 +264,7 @@ const boidSystem = createSystem(
 const v = new Victor(0, 0)
 
 const renderSystem = createSystem(
-  { entities: [Position, Velocity] },
+  { entities: [With(Position), With(Velocity)] },
   (world, { entities }) => {
     graphics.clear()
     graphics.lineStyle(1, 0xffffff)
@@ -281,20 +288,26 @@ const renderSystem = createSystem(
 
 const entities: any[] = []
 
+const testSystem = createSystem(
+  { entities: [Added(Boid)] },
+  (world, { entities }) => {
+    console.log(entities.length)
+  },
+)
+
 function addBoid() {
-  const entity = world.createEntity()
-  entities.push(entity)
-  world.addComponentToEntity(
-    entity,
-    Position(Math.random() * 800, Math.random() * 600),
-  )
-  world.addComponentToEntity(entity, Boid())
-  world.addComponentToEntity(entity, Neighbors())
   const velocity = new Victor(
     Math.random() * 2 - 1,
     Math.random() * 2 - 1,
   ).normalize()
-  world.addComponentToEntity(entity, Velocity(velocity.x, velocity.y))
+  const entity = world.createEntity(
+    Position(Math.random() * 800, Math.random() * 600),
+    Boid(),
+    Neighbors(),
+    Velocity(velocity.x, velocity.y),
+  )
+
+  entities.push(entity)
 }
 
 for (let i = 0; i < NUMBER_OF_BOIDS; i++) {
@@ -308,6 +321,7 @@ world.addSystem(neighborSystem)
 world.addSystem(boidSystem)
 world.addSystem(movingSystem)
 world.addSystem(renderSystem)
+world.addSystem(testSystem)
 
 const context = {
   dt: 0,
@@ -325,23 +339,22 @@ app.ticker.add(() => {
   world.tick(context.dt)
 })
 
-document.addEventListener("keydown", () => {
-  console.log("stopping!")
-  app.ticker.stop()
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    app.ticker.started ? app.ticker.stop() : app.ticker.start()
+  }
+
+  if (e.key === "ArrowUp") {
+    for (let i = 0; i < 10; i++) addBoid()
+  }
+
+  if (e.key === "ArrowDown") {
+    for (let i = 0; i < 10; i++) {
+      const e = entities.pop()
+
+      if (e) {
+        world.destroyEntity(e)
+      }
+    }
+  }
 })
-
-document.addEventListener("click", () => {
-  for (let i = 0; i < 10; i++) addBoid()
-})
-
-// setInterval(() => {
-//   for (let i = 0; i < entities.length; i++) {
-//     const component = world.tryGetComponent(entities[i], Neighbors)
-
-//     if (component) {
-//       world.removeComponentFromEntity(entities[i], component)
-//     } else {
-//       world.addComponentToEntity(entities[i], Neighbors())
-//     }
-//   }
-// }, 1000)

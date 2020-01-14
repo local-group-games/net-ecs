@@ -1,7 +1,7 @@
-import { createSystem } from "@net-ecs/core"
+import { createSystem, With } from "@net-ecs/core"
 import { Health } from "../components/health"
 
-const query = { damageable: [Health] }
+const query = { damageable: [With(Health)] }
 
 const DAMAGE_PER_SECOND = 10
 
