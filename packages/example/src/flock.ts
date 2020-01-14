@@ -5,6 +5,7 @@ import {
   Entity,
   With,
   Removed,
+  Changed,
 } from "@net-ecs/core"
 import * as PIXI from "pixi.js"
 import Victor from "victor"
@@ -92,13 +93,15 @@ const Boid = world.createComponentFactory(
 const movingSystem = createSystem(
   { entities: [With(Position), With(Velocity)] },
   (world, { entities }) => {
+    const step = world.clock.step / 1000
+
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
       const position = world.getComponent(entity, Position)
       const velocity = world.getComponent(entity, Velocity)
 
-      position.x += velocity.x * context.dt * SPEED
-      position.y += velocity.y * context.dt * SPEED
+      position.x += velocity.x * step * SPEED
+      position.y += velocity.y * step * SPEED
 
       if (position.x < 0) {
         position.x = position.x + 800
@@ -289,9 +292,20 @@ const renderSystem = createSystem(
 const entities: any[] = []
 
 const testSystem = createSystem(
-  { entities: [Added(Boid)] },
-  (world, { entities }) => {
-    console.log(entities.length)
+  { added: [Added(Boid)], removed: [Removed(Boid)], changed: [Changed(Boid)] },
+  (world, { added, removed, changed }) => {
+    if (added.length) {
+      console.log(`Added ${added.length}`)
+      added.forEach(entity => world.getMutableComponent(entity, Boid))
+    }
+
+    if (removed.length) {
+      console.log(`Removed ${removed.length}`)
+    }
+
+    if (changed.length) {
+      console.log(`Changed ${changed.length}`)
+    }
   },
 )
 
@@ -323,20 +337,8 @@ world.addSystem(movingSystem)
 world.addSystem(renderSystem)
 world.addSystem(testSystem)
 
-const context = {
-  dt: 0,
-  ticks: 0,
-}
-
 app.ticker.add(() => {
-  context.dt = app.ticker.deltaMS / 1000
-  context.ticks = context.ticks + 1
-
-  if (context.ticks % 60 === 0) {
-    console.log(Math.floor(app.ticker.FPS))
-  }
-
-  world.tick(context.dt)
+  world.tick(app.ticker.deltaMS)
 })
 
 document.addEventListener("keydown", e => {

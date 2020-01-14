@@ -5,7 +5,7 @@ const resolvePackageDirectory = package =>
   path.dirname(require.resolve(`${package}/package.json`))
 const monorepoPackages = ["@net-ecs/core"]
 const monorepoWebpackAliases = monorepoPackages.reduce((acc, packageName) => {
-  acc[packageName] = `${resolvePackageDirectory(packageName)}/src`
+  acc[packageName] = path.join(resolvePackageDirectory(packageName), "src")
   return acc
 }, {})
 

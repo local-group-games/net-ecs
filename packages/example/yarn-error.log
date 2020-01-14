@@ -1,0 +1,84 @@
+Arguments: 
+  C:\Program Files\nodejs\node.exe C:\Program Files (x86)\Yarn\bin\yarn.js
+
+PATH: 
+  C:\Users\Eric\bin;C:\Program Files\Git\mingw64\bin;C:\Program Files\Git\usr\local\bin;C:\Program Files\Git\usr\bin;C:\Program Files\Git\usr\bin;C:\Program Files\Git\mingw64\bin;C:\Program Files\Git\usr\bin;C:\Users\Eric\bin;C:\ProgramData\DockerDesktop\version-bin;C:\Program Files\Docker\Docker\Resources\bin;C:\ProgramData\Oracle\Java\javapath;C:\Program Files\Haskell\bin;E:\Haskell\8.0.1\lib\extralibs\bin;E:\Haskell\8.0.1\bin;C:\Program Files\Common Files\microsoft shared\Windows Live;C:\Program Files (x86)\Common Files\Microsoft Shared\Windows Live;C:\Windows\System32;C:\Windows;C:\Windows\System32\wbem;C:\Windows\System32\WindowsPowerShell\v1.0;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files (x86)\Windows Live\Shared;C:\Users\Eric\.dnx\bin;C:\Program Files\Microsoft DNX\Dnvm;C:\Program Files (x86)\Skype\Phone;C:\Program Files (x86)\GtkSharp\2.12\bin;E:\Haskell\8.0.1\mingw\bin;C:\HashiCorp\Vagrant\bin;C:\ProgramData\chocolatey\bin;C:\Program Files (x86)\Yarn\bin;C:\Program Files\Git\cmd;C:\Program Files\Git\mingw64\bin;C:\Program Files\Git\usr\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0;C:\WINDOWS\System32\OpenSSH;C:\Program Files\nodejs;C:\Program Files\Git\mingw64\libexec\git-core;C:\Program Files\dotnet;C:\Program Files\NVIDIA Corporation\NVIDIA NvDLISR;C:\Users\Eric\.windows-build-tools\python27;C:\Program Files\nodejs\node_modules\npm\node_modules\npm-lifecycle\node-gyp-bin;C:\Users\Eric\AppData\Roaming\npm\node_modules\windows-build-tools\node_modules\.bin;C:\Users\Eric\AppData\Roaming\npm\node_modules\.bin;C:\ProgramData\Oracle\Java\javapath;C:\Program Files\Haskell\bin;E:\Haskell\8.0.1\lib\extralibs\bin;E:\Haskell\8.0.1\bin;C:\Program Files\Common Files\microsoft shared\Windows Live;C:\Program Files (x86)\Common Files\Microsoft Shared\Windows Live;C:\Windows\System32;C:\Windows;C:\Windows\System32\wbem;C:\Windows\System32\WindowsPowerShell\v1.0;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files (x86)\Windows Live\Shared;C:\Users\Eric\.dnx\bin;C:\Program Files\Microsoft DNX\Dnvm;C:\Program Files (x86)\Skype\Phone;C:\Program Files (x86)\GtkSharp\2.12\bin;E:\Haskell\8.0.1\mingw\bin;C:\HashiCorp\Vagrant\bin;C:\ProgramData\chocolatey\bin;C:\Program Files (x86)\Yarn\bin;C:\Program Files\Git\cmd;C:\Program Files\Git\mingw64\bin;C:\Prog;C:\Users\Eric\AppData\Local\Programs\Microsoft VS Code\bin;C:\Program Files\Git\usr\bin\vendor_perl;C:\Program Files\Git\usr\bin\core_perl
+
+Yarn version: 
+  0.23.4
+
+Node version: 
+  10.9.0
+
+Platform: 
+  win32 x64
+
+npm manifest: 
+  {
+    "name": "@net-ecs/example",
+    "version": "0.0.0",
+    "description": "> TODO: description",
+    "author": "Eric McDaniel <eric.g.mcdaniel@gmail.com>",
+    "homepage": "",
+    "license": "ISC",
+    "main": "src/index.ts",
+    "directories": {
+      "src": "src"
+    },
+    "files": [
+      "src"
+    ],
+    "publishConfig": {
+      "access": "public"
+    },
+    "dependencies": {
+      "@net-ecs/core": "^0.0.0",
+      "pixi.js": "^5.2.0",
+      "react": "^16.12.0",
+      "react-dom": "^16.12.0",
+      "victor": "^1.1.0"
+    },
+    "devDependencies": {
+      "@types/react": "^16.9.17",
+      "@types/react-dom": "^16.9.4",
+      "@types/victor": "^1.1.0",
+      "customize-cra": "^0.9.1",
+      "react-app-rewired": "^2.1.5",
+      "react-scripts": "^3.3.0"
+    },
+    "scripts": {
+      "build": "react-app-rewired build",
+      "start": "react-app-rewired start"
+    },
+    "browserslist": {
+      "production": [
+        ">0.2%",
+        "not dead",
+        "not op_mini all"
+      ],
+      "development": [
+        "last 1 chrome version",
+        "last 1 firefox version",
+        "last 1 safari version"
+      ]
+    }
+  }
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile
+
+Trace: 
+  Error: https://registry.yarnpkg.com/@net-ecs%2fcore: Not found
+      at Request.params.callback [as _callback] (C:\Program Files (x86)\Yarn\lib\util\request-manager.js:326:18)
+      at Request.self.callback (C:\Program Files (x86)\Yarn\node_modules\request\request.js:188:22)
+      at Request.emit (events.js:182:13)
+      at Request.<anonymous> (C:\Program Files (x86)\Yarn\node_modules\request\request.js:1171:10)
+      at Request.emit (events.js:182:13)
+      at IncomingMessage.<anonymous> (C:\Program Files (x86)\Yarn\node_modules\request\request.js:1091:12)
+      at Object.onceWrapper (events.js:273:13)
+      at IncomingMessage.emit (events.js:187:15)
+      at endReadableNT (_stream_readable.js:1085:12)
+      at process._tickCallback (internal/process/next_tick.js:63:19)

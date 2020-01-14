@@ -28,9 +28,9 @@ function buildInitialSystemQueryResults(system: System) {
 
 enum EntityTag {
   Added,
-  ComponentsChanged,
-  Changed,
   Deleted,
+  Changed,
+  ComponentsChanged,
 }
 
 export function createEntityAdmin() {
@@ -47,7 +47,7 @@ export function createEntityAdmin() {
   const componentPools: { [key: string]: StackPool<Component> } = {}
   const systems: System[] = []
   const systemQueryResults = new WeakMap<System, SystemQueryResult>()
-  const updateNextTick = new Set<Entity>()
+  const entitiesToUpdateNextTick = new Set<Entity>()
   const tags = {
     [EntityTag.Added]: new Set<Entity>(),
     [EntityTag.ComponentsChanged]: new Set<Entity>(),
@@ -70,7 +70,7 @@ export function createEntityAdmin() {
     mutableRemove(systems, system)
   }
 
-  function doQuery(selector: Selector, entity: Entity) {
+  function match(selector: Selector, entity: Entity) {
     switch (selector.selectorType) {
       case SelectorType.Added:
         return tags[EntityTag.Added].has(entity)
@@ -94,17 +94,17 @@ export function createEntityAdmin() {
 
   function updateQueryForEntity(system: System, entity: Entity) {
     const results = systemQueryResults.get(system)!
-    const runQueryWithEntity = (selector: Selector) => doQuery(selector, entity)
+    const runQueryWithEntity = (selector: Selector) => match(selector, entity)
 
     for (const queryName in system.query) {
       const selectors = system.query[queryName]
       const selectorResults = results[queryName]
       const isSelected = contains(selectorResults, entity)
-      const isQueryHit = selectors.every(runQueryWithEntity)
+      const isHit = selectors.every(runQueryWithEntity)
 
-      if (isQueryHit && !isSelected) {
+      if (isHit && !isSelected) {
         selectorResults.push(entity)
-      } else if (!isQueryHit && isSelected) {
+      } else if (!isHit && isSelected) {
         mutableRemoveUnordered(selectorResults, entity)
       }
     }
@@ -128,16 +128,21 @@ export function createEntityAdmin() {
     }
   }
 
-  function tick(timeStep: number) {
+  function processTags() {
     for (const entity of tags[EntityTag.Added]) {
       updateAllQueriesForEntity(entity)
-      updateNextTick.add(entity)
+      entitiesToUpdateNextTick.add(entity)
     }
 
     for (const entity of tags[EntityTag.Deleted]) {
       unregisterEntity(entity)
       updateAllQueriesForEntity(entity)
-      updateNextTick.add(entity)
+      entitiesToUpdateNextTick.add(entity)
+    }
+
+    for (const entity of tags[EntityTag.Changed]) {
+      updateAllQueriesForEntity(entity)
+      entitiesToUpdateNextTick.add(entity)
     }
 
     for (const entity of tags[EntityTag.ComponentsChanged]) {
@@ -146,7 +151,12 @@ export function createEntityAdmin() {
 
     tags[EntityTag.Added].clear()
     tags[EntityTag.Deleted].clear()
+    tags[EntityTag.Changed].clear()
     tags[EntityTag.ComponentsChanged].clear()
+  }
+
+  function tick(timeStep: number) {
+    processTags()
 
     clock.step = timeStep
     clock.tick += 1
@@ -161,20 +171,20 @@ export function createEntityAdmin() {
       }
     }
 
-    for (const entity of updateNextTick) {
+    for (const entity of entitiesToUpdateNextTick) {
       updateAllQueriesForEntity(entity)
     }
 
-    updateNextTick.clear()
+    entitiesToUpdateNextTick.clear()
   }
 
-  function createEntity(...entityComponents: Component[]) {
+  function createEntity(...components: Component[]) {
     const entity = (entitySequence += 1)
 
     entities.add(entity)
 
-    for (let i = 0; i < entityComponents.length; i++) {
-      addComponentToEntity(entity, entityComponents[i])
+    for (let i = 0; i < components.length; i++) {
+      addComponentToEntity(entity, components[i])
     }
 
     tags[EntityTag.Added].add(entity)
@@ -216,18 +226,12 @@ export function createEntityAdmin() {
     map[entity] = null
     tags[EntityTag.ComponentsChanged].add(entity)
 
-    let release = true
-
     for (const entityId in map) {
       if (map[entityId] === component) {
-        release = false
+        const pool = componentPools[type]
+        pool.release(component)
         break
       }
-    }
-
-    if (release) {
-      const pool = componentPools[type]
-      pool.release(component)
     }
 
     return entity
@@ -251,7 +255,7 @@ export function createEntityAdmin() {
     entity: Entity,
     componentFactory: F,
   ) {
-    tags[EntityTag.ComponentsChanged].add(entity)
+    tags[EntityTag.Changed].add(entity)
 
     getComponent(entity, componentFactory)
   }
