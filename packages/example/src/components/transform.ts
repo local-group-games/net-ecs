@@ -1,15 +1,15 @@
-import { ComponentTypes } from "../componentTypes"
-import { entityAdmin } from "../entityAdmin"
+import { createComponentFactory } from "@net-ecs/core"
 
-export const Transform = entityAdmin.createComponentFactory(
-  ComponentTypes.Transform,
-  {
-    x: 0,
-    y: 0,
-  },
-  (transform, x: number, y: number) => {
+const schema = {
+  x: 0,
+  y: 0,
+}
+
+export const Transform = createComponentFactory(
+  "Transform",
+  schema,
+  (transform, x: number = transform.x, y: number = transform.y) => {
     transform.x = x
     transform.y = y
   },
-  1000,
 )

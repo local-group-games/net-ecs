@@ -1,2 +1,4 @@
-export * from "./damage"
-export * from "./movement"
+export * from "./boidSystem"
+export * from "./movementSystem"
+export * from "./neighborSystem"
+export * from "./renderSystem"

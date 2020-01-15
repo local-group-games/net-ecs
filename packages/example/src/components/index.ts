@@ -1,2 +1,4 @@
-export * from "./health"
-export * from "./transform"
+export * from "./Boid"
+export * from "./Neighbors"
+export * from "./Transform"
+export * from "./Velocity"

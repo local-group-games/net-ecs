@@ -1,20 +1,11 @@
-import {
-  Component,
-  ComponentFactory,
-  ComponentOfFactory,
-  ComponentType,
-} from "./component"
+import { Component, ComponentFactory } from "./component"
+import { createComponentAdmin } from "./componentAdmin"
 import { Entity } from "./entity"
-import { createStackPool, StackPool } from "./pool/stackPool"
 import { Selector, SelectorType } from "./selector"
 import { System, SystemQueryResult } from "./system"
 import { Clock } from "./types/clock"
-import {
-  contains,
-  mutableRemove,
-  mutableRemoveUnordered,
-  resetObject,
-} from "./util"
+import { GetFactoryArguments } from "./types/util"
+import { contains, mutableRemove, mutableRemoveUnordered } from "./util"
 
 function buildInitialSystemQueryResults(system: System) {
   const results: SystemQueryResult = {}
@@ -33,7 +24,22 @@ enum EntityTag {
   ComponentsChanged,
 }
 
-export function createEntityAdmin() {
+type EntityAdminConfig = {
+  initialPoolSize: number
+}
+
+type EntityAdminOptions = {
+  [K in keyof EntityAdminConfig]?: EntityAdminConfig[K]
+}
+
+const defaultOptions: EntityAdminConfig = {
+  initialPoolSize: 500,
+}
+
+export function createEntityAdmin(
+  options: EntityAdminOptions = defaultOptions,
+) {
+  const config: EntityAdminConfig = Object.assign({}, defaultOptions, options)
   const clock: Clock = {
     step: -1,
     tick: -1,
@@ -41,10 +47,7 @@ export function createEntityAdmin() {
   }
 
   const entities = new Set<Entity>()
-  const componentMap: {
-    [componentType: string]: { [entity: number]: Component | null }
-  } = {}
-  const componentPools: { [key: string]: StackPool<Component> } = {}
+  const componentAdmin = createComponentAdmin(config.initialPoolSize)
   const systems: System[] = []
   const systemQueryResults = new WeakMap<System, SystemQueryResult>()
   const entitiesToUpdateNextTick = new Set<Entity>()
@@ -70,7 +73,7 @@ export function createEntityAdmin() {
     mutableRemove(systems, system)
   }
 
-  function match(selector: Selector, entity: Entity) {
+  function select(selector: Selector, entity: Entity) {
     switch (selector.selectorType) {
       case SelectorType.Added:
         return tags[EntityTag.Added].has(entity)
@@ -80,7 +83,10 @@ export function createEntityAdmin() {
         return tags[EntityTag.Changed].has(entity)
       case SelectorType.With:
       case SelectorType.Without: {
-        const components = componentMap[selector.componentFactory.$type][entity]
+        const components = componentAdmin.tryGetComponent(
+          entity,
+          selector.componentFactory,
+        )
         const hasComponents = components !== null && components !== undefined
 
         return selector.selectorType === SelectorType.With
@@ -88,23 +94,21 @@ export function createEntityAdmin() {
           : !hasComponents
       }
     }
-
-    return false
   }
 
   function updateQueryForEntity(system: System, entity: Entity) {
     const results = systemQueryResults.get(system)!
-    const runQueryWithEntity = (selector: Selector) => match(selector, entity)
+    const selectWithEntity = (selector: Selector) => select(selector, entity)
 
     for (const queryName in system.query) {
       const selectors = system.query[queryName]
       const selectorResults = results[queryName]
       const isSelected = contains(selectorResults, entity)
-      const isHit = selectors.every(runQueryWithEntity)
+      const isQueryHit = selectors.every(selectWithEntity)
 
-      if (isHit && !isSelected) {
+      if (isQueryHit && !isSelected) {
         selectorResults.push(entity)
-      } else if (!isHit && isSelected) {
+      } else if (!isQueryHit && isSelected) {
         mutableRemoveUnordered(selectorResults, entity)
       }
     }
@@ -118,16 +122,6 @@ export function createEntityAdmin() {
     }
   }
 
-  function unregisterEntity(entity: Entity) {
-    for (const componentType in componentMap) {
-      const component = componentMap[componentType][entity]
-
-      if (component) {
-        removeComponentFromEntity(entity, component)
-      }
-    }
-  }
-
   function processTags() {
     for (const entity of tags[EntityTag.Added]) {
       updateAllQueriesForEntity(entity)
@@ -135,7 +129,7 @@ export function createEntityAdmin() {
     }
 
     for (const entity of tags[EntityTag.Deleted]) {
-      unregisterEntity(entity)
+      componentAdmin.clearComponentsForEntity(entity)
       updateAllQueriesForEntity(entity)
       entitiesToUpdateNextTick.add(entity)
     }
@@ -178,14 +172,10 @@ export function createEntityAdmin() {
     entitiesToUpdateNextTick.clear()
   }
 
-  function createEntity(...components: Component[]) {
+  function createEntity() {
     const entity = (entitySequence += 1)
 
     entities.add(entity)
-
-    for (let i = 0; i < components.length; i++) {
-      addComponentToEntity(entity, components[i])
-    }
 
     tags[EntityTag.Added].add(entity)
 
@@ -200,64 +190,45 @@ export function createEntityAdmin() {
     return entity
   }
 
-  function addComponentToEntity(entity: Entity, component: Component) {
-    const { type } = component
-    const map = componentMap[type]
-
-    if (!map) {
-      throw new Error(`Component ${type} has not been registered.`)
-    }
-
-    map[entity] = component
-
+  function addComponentToEntity<F extends ComponentFactory>(
+    entity: Entity,
+    componentFactory: F,
+    ...args: GetFactoryArguments<F>
+  ) {
     tags[EntityTag.ComponentsChanged].add(entity)
+
+    return componentAdmin.addComponentToEntity(
+      entity,
+      componentFactory,
+      ...args,
+    )
   }
 
-  function removeComponentFromEntity(entity: Entity, component: Component) {
-    const { type } = component
-    const map = componentMap[type]
-
-    if (!map[entity]) {
-      throw new Error(
-        `Attempted to remove component ${component.type} to unregistered entity ${entity}.`,
-      )
-    }
-
-    map[entity] = null
+  function removeComponentFromEntity(
+    entity: Entity,
+    component: Component | ComponentFactory,
+  ) {
     tags[EntityTag.ComponentsChanged].add(entity)
 
-    for (const entityId in map) {
-      if (map[entityId] === component) {
-        const pool = componentPools[type]
-        pool.release(component)
-        break
-      }
-    }
-
-    return entity
+    return componentAdmin.removeComponentFromEntity(entity, component)
   }
 
   function getComponent<F extends ComponentFactory>(
     entity: Entity,
     componentFactory: F,
   ) {
-    const { $type } = componentFactory
-    const component = componentMap[$type][entity]
-
-    if (component) {
-      return component as ComponentOfFactory<F>
-    }
-
-    throw new Error(`Component ${$type} not found on entity ${entity}.`)
+    return componentAdmin.getComponent(entity, componentFactory)
   }
 
   function getMutableComponent<F extends ComponentFactory>(
     entity: Entity,
     componentFactory: F,
   ) {
-    tags[EntityTag.Changed].add(entity)
+    const component = getComponent(entity, componentFactory)
 
-    getComponent(entity, componentFactory)
+    tags[EntityTag.ComponentsChanged].add(entity)
+
+    return component
   }
 
   function tryGetMutableComponent<F extends ComponentFactory>(
@@ -275,53 +246,7 @@ export function createEntityAdmin() {
     entity: Entity,
     componentFactory: F,
   ) {
-    try {
-      return getComponent(entity, componentFactory)
-    } catch {
-      return null
-    }
-  }
-
-  function createComponentFactory<
-    T extends ComponentType,
-    D extends {},
-    I extends (base: Component<T, D>, ...args: any[]) => void
-  >(
-    type: T,
-    defaults: D,
-    instantiate: I,
-    poolSize: number,
-  ): ComponentFactory<Component<T, D>> {
-    const reset = (obj: any) => {
-      Object.assign(obj, defaults)
-      ;(obj as any).type = type
-
-      return obj
-    }
-    const create = () => reset({})
-    const release = (obj: any) => {
-      resetObject(obj)
-      return reset(obj)
-    }
-    const componentPool = createStackPool(create, release, poolSize)
-
-    function componentFactory<
-      A extends any[] = I extends (base: any, ...args: infer _) => void
-        ? _
-        : never
-    >(...args: A) {
-      const component = componentPool.retain()
-
-      instantiate(component, ...args)
-
-      return component
-    }
-
-    componentMap[type] = {}
-    componentPools[type] = componentPool
-    componentFactory.$type = type
-
-    return componentFactory
+    return componentAdmin.tryGetComponent(entity, componentFactory)
   }
 
   const world = {
@@ -337,7 +262,6 @@ export function createEntityAdmin() {
     getMutableComponent,
     tryGetComponent,
     tryGetMutableComponent,
-    createComponentFactory,
   }
 
   return world
