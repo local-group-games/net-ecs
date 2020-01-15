@@ -9,7 +9,7 @@ type ComponentTable = {
 }
 
 export function createComponentAdmin(initialPoolSize: number) {
-  const componentMap: ComponentTable = {}
+  const componentTable: ComponentTable = {}
   const componentPools: { [componentType: string]: StackPool<Component> } = {}
 
   function registerComponentFactory(componentFactory: ComponentFactory) {
@@ -30,13 +30,13 @@ export function createComponentAdmin(initialPoolSize: number) {
     }
     const componentPool = createStackPool(create, release, initialPoolSize)
 
-    componentMap[type] = {}
+    componentTable[type] = {}
     componentPools[type] = componentPool
   }
 
   function clearComponentsForEntity(entity: Entity) {
-    for (const componentType in componentMap) {
-      const component = componentMap[componentType][entity]
+    for (const componentType in componentTable) {
+      const component = componentTable[componentType][entity]
 
       if (component) {
         removeComponentFromEntity(entity, component)
@@ -51,12 +51,12 @@ export function createComponentAdmin(initialPoolSize: number) {
   ) {
     const { type, initialize } = componentFactory
 
-    if (!componentMap[type]) {
+    if (!componentTable[type]) {
       registerComponentFactory(componentFactory)
     }
 
     const pool = componentPools[type]
-    const map = componentMap[type]
+    const map = componentTable[type]
     const component = pool.retain()
 
     initialize(component, ...args)
@@ -64,12 +64,19 @@ export function createComponentAdmin(initialPoolSize: number) {
     map[entity] = component
   }
 
+  function isComponentFactory(obj: object): obj is ComponentFactory {
+    return "initialize" in obj
+  }
+
   function removeComponentFromEntity(
     entity: Entity,
     component: Component | ComponentFactory,
   ) {
+    if (isComponentFactory(component)) {
+      component = getComponent(entity, component)
+    }
     const { type } = component
-    const map = componentMap[type]
+    const map = componentTable[type]
 
     if (!map[entity]) {
       throw new Error(
@@ -77,7 +84,7 @@ export function createComponentAdmin(initialPoolSize: number) {
       )
     }
 
-    map[entity] = null
+    delete map[entity]
 
     let release = true
 
@@ -100,7 +107,7 @@ export function createComponentAdmin(initialPoolSize: number) {
     componentFactory: F,
   ) {
     const { type } = componentFactory
-    const component = componentMap[type][entity]
+    const component = componentTable[type][entity]
 
     if (component) {
       return component as ComponentOfFactory<F>

@@ -6,8 +6,7 @@ import { graphics } from "../graphics"
 const v = new Victor(0, 0)
 
 export const renderSystem = createSystem(
-  { entities: [With(Transform), With(Velocity)] },
-  (world, { entities }) => {
+  (world, entities) => {
     graphics.clear()
     graphics.lineStyle(1, 0xffffff)
 
@@ -26,4 +25,5 @@ export const renderSystem = createSystem(
       graphics.lineTo(position.x + v.x, position.y + v.y)
     }
   },
+  [With(Transform), With(Velocity)],
 )

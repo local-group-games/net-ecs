@@ -9,8 +9,7 @@ const v1 = new Victor(0, 0)
 const v2 = new Victor(0, 0)
 
 export const neighborSystem = createSystem(
-  { entities: [With(Transform), With(Neighbors)] },
-  (world, { entities }) => {
+  (world, entities) => {
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
       const neighbors = world.tryGetComponent(entity, Neighbors)
@@ -49,4 +48,5 @@ export const neighborSystem = createSystem(
       }
     }
   },
+  [With(Transform), With(Neighbors)],
 )

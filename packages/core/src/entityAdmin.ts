@@ -2,20 +2,11 @@ import { Component, ComponentFactory } from "./component"
 import { createComponentAdmin } from "./componentAdmin"
 import { Entity } from "./entity"
 import { Selector, SelectorType } from "./selector"
-import { System, SystemQueryResult } from "./system"
+import { System, SystemQueryResult, SystemQuery } from "./system"
 import { Clock } from "./types/clock"
 import { GetFactoryArguments } from "./types/util"
 import { contains, mutableRemove, mutableRemoveUnordered } from "./util"
-
-function buildInitialSystemQueryResults(system: System) {
-  const results: SystemQueryResult = {}
-
-  for (const queryName of Object.keys(system.query)) {
-    results[queryName] = []
-  }
-
-  return results
-}
+import memoize from "fast-memoize"
 
 enum EntityTag {
   Added,
@@ -26,6 +17,7 @@ enum EntityTag {
 
 type EntityAdminConfig = {
   initialPoolSize: number
+  useQueryMemoization: boolean
 }
 
 type EntityAdminOptions = {
@@ -34,6 +26,7 @@ type EntityAdminOptions = {
 
 const defaultOptions: EntityAdminConfig = {
   initialPoolSize: 500,
+  useQueryMemoization: true,
 }
 
 export function createEntityAdmin(
@@ -61,7 +54,7 @@ export function createEntityAdmin(
   let entitySequence = 0
 
   function addSystem(system: System) {
-    const results = buildInitialSystemQueryResults(system)
+    const results = system.query.map(() => [])
 
     systems.push(system)
     systemQueryResults.set(system, results)
@@ -96,15 +89,54 @@ export function createEntityAdmin(
     }
   }
 
-  function updateQueryForEntity(system: System, entity: Entity) {
-    const results = systemQueryResults.get(system)!
-    const selectWithEntity = (selector: Selector) => select(selector, entity)
+  const memoizedSelectStore = new Map()
+  const memoizedSelect = config.useQueryMemoization
+    ? memoize(select, {
+        serializer(args) {
+          const {
+            selectorType,
+            componentFactory: { type },
+          } = args[0] as Selector
 
-    for (const queryName in system.query) {
-      const selectors = system.query[queryName]
-      const selectorResults = results[queryName]
+          return selectorType + ":" + type + ":" + args[1]
+        },
+        cache: {
+          // @ts-ignore (https://github.com/caiogondim/fast-memoize.js/issues/78)
+          create() {
+            return {
+              has(key: any) {
+                return memoizedSelectStore.has(key)
+              },
+              get(key: any) {
+                return memoizedSelectStore.get(key)
+              },
+              set(key: any, value: any) {
+                memoizedSelectStore.set(key, value)
+              },
+            }
+          },
+        },
+      })
+    : select
+
+  function updateQueryForEntity(system: System, entity: Entity) {
+    const { query } = system
+    const results = systemQueryResults.get(system)!
+
+    for (let i = 0; i < query.length; i++) {
+      const selectors = system.query[i]
+      const selectorResults = results[i]
       const isSelected = contains(selectorResults, entity)
-      const isQueryHit = selectors.every(selectWithEntity)
+
+      let isQueryHit = true
+
+      for (let i = 0; i < selectors.length && isQueryHit; i++) {
+        const selector = selectors[i]
+
+        if (!memoizedSelect(selector, entity)) {
+          isQueryHit = false
+        }
+      }
 
       if (isQueryHit && !isSelected) {
         selectorResults.push(entity)
@@ -161,7 +193,7 @@ export function createEntityAdmin(
       const result = systemQueryResults.get(system)
 
       if (result) {
-        system.update(world, result)
+        system.update(world, ...result)
       }
     }
 
@@ -170,6 +202,7 @@ export function createEntityAdmin(
     }
 
     entitiesToUpdateNextTick.clear()
+    memoizedSelectStore.clear()
   }
 
   function createEntity() {
@@ -186,6 +219,7 @@ export function createEntityAdmin(
     entities.delete(entity)
 
     tags[EntityTag.Deleted].add(entity)
+    tags[EntityTag.Changed].delete(entity)
 
     return entity
   }
@@ -195,6 +229,10 @@ export function createEntityAdmin(
     componentFactory: F,
     ...args: GetFactoryArguments<F>
   ) {
+    if (tags[EntityTag.Deleted].has(entity) || !entities.has(entity)) {
+      return false
+    }
+
     tags[EntityTag.ComponentsChanged].add(entity)
 
     return componentAdmin.addComponentToEntity(
@@ -208,6 +246,10 @@ export function createEntityAdmin(
     entity: Entity,
     component: Component | ComponentFactory,
   ) {
+    if (tags[EntityTag.Deleted].has(entity) || !entities.has(entity)) {
+      return false
+    }
+
     tags[EntityTag.ComponentsChanged].add(entity)
 
     return componentAdmin.removeComponentFromEntity(entity, component)

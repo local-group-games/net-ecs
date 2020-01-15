@@ -4,8 +4,7 @@ import { Transform, Velocity } from "../components"
 const SPEED = 50
 
 export const movingSystem = createSystem(
-  { entities: [With(Transform), With(Velocity)] },
-  (world, { entities }) => {
+  (world, entities) => {
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
       const position = world.getComponent(entity, Transform)
@@ -26,4 +25,5 @@ export const movingSystem = createSystem(
       }
     }
   },
+  [With(Transform), With(Velocity)],
 )

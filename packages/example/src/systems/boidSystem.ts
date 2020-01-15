@@ -15,8 +15,7 @@ const _sum = { x: 0, y: 0 }
 const _sum2 = { x: 0, y: 0 }
 
 export const boidSystem = createSystem(
-  { entities: [With(Boid), With(Neighbors), With(Transform), With(Velocity)] },
-  (world, { entities }) => {
+  (world, entities) => {
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
       const boid = world.getComponent(entity, Boid)
@@ -28,70 +27,68 @@ export const boidSystem = createSystem(
       }
 
       const velocity = world.getComponent(entity, Velocity)
-      {
-        const numberOfNeighbors = neighbors.far.length
+      const numberOfNeighborsFar = neighbors.far.length
 
-        _sum.x = 0
-        _sum.y = 0
+      _sum.x = 0
+      _sum.y = 0
 
-        for (let i = 0; i < numberOfNeighbors; i++) {
-          const position = world.getComponent(neighbors.far[i], Transform)
-          _sum.x += position.x
-          _sum.y += position.y
-        }
-
-        cohesion.x = _sum.x / numberOfNeighbors
-        cohesion.y = _sum.y / numberOfNeighbors
-        cohesion.subtractScalarX(position.x)
-        cohesion.subtractScalarY(position.y)
-
-        if (_sum.x === 0 && _sum.y === 0) {
-          boid.cohesionX = 0
-          boid.cohesionY = 0
-        } else {
-          boid.cohesionX = cohesion.normalize().x
-          boid.cohesionY = cohesion.y
-        }
+      for (let i = 0; i < numberOfNeighborsFar; i++) {
+        const position = world.getComponent(neighbors.far[i], Transform)
+        _sum.x += position.x
+        _sum.y += position.y
       }
-      {
-        const numberOfNeighbors = neighbors.near.length
 
-        _sum2.x = 0
-        _sum2.y = 0
+      cohesion.x = _sum.x / numberOfNeighborsFar
+      cohesion.y = _sum.y / numberOfNeighborsFar
+      cohesion.subtractScalarX(position.x)
+      cohesion.subtractScalarY(position.y)
 
-        for (let i = 0; i < numberOfNeighbors; i++) {
-          const position = world.getComponent(neighbors.near[i], Transform)
-          _sum2.x += position.x
-          _sum2.y += position.y
-        }
-
-        separation.x = _sum2.x / numberOfNeighbors
-        separation.y = _sum2.y / numberOfNeighbors
-        separation.subtractScalarX(position.x)
-        separation.subtractScalarY(position.y)
-
-        if (_sum2.x === 0 && _sum2.y === 0) {
-          boid.separationX = 0
-          boid.separationY = 0
-        } else {
-          boid.separationX = -separation.normalize().x
-          boid.separationY = -separation.y
-        }
+      if (_sum.x === 0 && _sum.y === 0) {
+        boid.cohesionX = 0
+        boid.cohesionY = 0
+      } else {
+        boid.cohesionX = cohesion.normalize().x
+        boid.cohesionY = cohesion.y
       }
-      {
-        alignment.x = velocity.x
-        alignment.y = velocity.y
+
+      const numberOfNeighborsNear = neighbors.near.length
+
+      _sum2.x = 0
+      _sum2.y = 0
+
+      for (let i = 0; i < numberOfNeighborsNear; i++) {
+        const position = world.getComponent(neighbors.near[i], Transform)
+        _sum2.x += position.x
+        _sum2.y += position.y
+      }
+
+      separation.x = _sum2.x / numberOfNeighborsNear
+      separation.y = _sum2.y / numberOfNeighborsNear
+      separation.subtractScalarX(position.x)
+      separation.subtractScalarY(position.y)
+
+      if (_sum2.x === 0 && _sum2.y === 0) {
+        boid.separationX = 0
+        boid.separationY = 0
+      } else {
+        boid.separationX = -separation.normalize().x
+        boid.separationY = -separation.y
+      }
+
+      alignment.x = velocity.x
+      alignment.y = velocity.y
+      alignment.normalize()
+
+      for (const neighbor of neighbors.far) {
+        const velocity = world.getComponent(neighbor, Velocity)!
+        alignment.addScalarX(velocity.x)
+        alignment.addScalarY(velocity.y)
         alignment.normalize()
-
-        for (const neighbor of neighbors.far) {
-          const velocity = world.getComponent(neighbor, Velocity)!
-          alignment.addScalarX(velocity.x)
-          alignment.addScalarY(velocity.y)
-          alignment.normalize()
-        }
-        boid.alignmentX = alignment.normalize().x
-        boid.alignmentY = alignment.y
       }
+
+      boid.alignmentX = alignment.normalize().x
+      boid.alignmentY = alignment.y
+
       velocity.x += boid.cohesionX * COHESION_WEIGHT
       velocity.y += boid.cohesionY * COHESION_WEIGHT
       velocity.x += boid.separationX * SEPARATION_WEIGHT
@@ -105,4 +102,5 @@ export const boidSystem = createSystem(
       velocity.y = normalizedVelocity.y
     }
   },
+  [With(Boid), With(Neighbors), With(Transform), With(Velocity)],
 )
