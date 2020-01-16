@@ -1,5 +1,4 @@
 import { ComponentFactory } from "./component"
-import memoize from "fast-memoize"
 
 export enum SelectorType {
   Without,
@@ -20,15 +19,8 @@ export type Selector<
 function createSelector<T extends SelectorType, F extends ComponentFactory>(
   selectorType: T,
 ) {
-  return memoize(
-    (componentFactory: F) =>
-      ({ selectorType, componentFactory } as Selector<T, F>),
-    {
-      serializer(componentFactory: any) {
-        return (componentFactory as ComponentFactory).type
-      },
-    },
-  )
+  return (componentFactory: F) =>
+    ({ selectorType, componentFactory } as Selector<T, F>)
 }
 
 export const Without = createSelector(SelectorType.Without)

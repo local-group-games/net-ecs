@@ -1,4 +1,5 @@
 export * from "./Boid"
+export * from "./Color"
 export * from "./Neighbors"
 export * from "./Transform"
 export * from "./Velocity"

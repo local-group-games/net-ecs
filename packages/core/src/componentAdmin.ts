@@ -1,12 +1,16 @@
-import { Component, ComponentFactory, ComponentOfFactory } from "./component"
+import { Component, ComponentFactory, ComponentOf } from "./component"
 import { Entity } from "./entity"
 import { createStackPool, StackPool } from "./pool/stackPool"
 import { GetFactoryArguments } from "./types/util"
 import { resetObject } from "./util"
+import { isComponentFactory } from "./util/isComponentFactory"
 
 type ComponentTable = {
   [componentType: string]: { [entity: number]: Component | null }
 }
+
+const $debug_component_table = Symbol("debug_component_table")
+const $debug_component_pools = Symbol("debug_component_pools")
 
 export function createComponentAdmin(initialPoolSize: number) {
   const componentTable: ComponentTable = {}
@@ -29,12 +33,15 @@ export function createComponentAdmin(initialPoolSize: number) {
       return reset(obj)
     }
     const componentPool = createStackPool(create, release, initialPoolSize)
+    const map = {}
 
-    componentTable[type] = {}
+    componentTable[type] = map
     componentPools[type] = componentPool
+
+    return map
   }
 
-  function clearComponentsForEntity(entity: Entity) {
+  function clearEntityComponents(entity: Entity) {
     for (const componentType in componentTable) {
       const component = componentTable[componentType][entity]
 
@@ -44,10 +51,9 @@ export function createComponentAdmin(initialPoolSize: number) {
     }
   }
 
-  function addComponentToEntity<F extends ComponentFactory>(
-    entity: Entity,
+  function createComponentInstance<F extends ComponentFactory>(
     componentFactory: F,
-    ...args: GetFactoryArguments<F>
+    ...args: F extends ComponentFactory ? GetFactoryArguments<F> : never[]
   ) {
     const { type, initialize } = componentFactory
 
@@ -56,16 +62,45 @@ export function createComponentAdmin(initialPoolSize: number) {
     }
 
     const pool = componentPools[type]
-    const map = componentTable[type]
     const component = pool.retain()
 
     initialize(component, ...args)
 
-    map[entity] = component
+    return component
   }
 
-  function isComponentFactory(obj: object): obj is ComponentFactory {
-    return "initialize" in obj
+  function addComponentToEntity<C extends Component | ComponentFactory>(
+    entity: Entity,
+    componentOrFactory: C,
+    ...args: C extends ComponentFactory ? GetFactoryArguments<C> : never[]
+  ) {
+    const { type } = componentOrFactory
+
+    let map = componentTable[type]
+    let result: Component
+
+    if (isComponentFactory(componentOrFactory)) {
+      result = createComponentInstance(componentOrFactory, ...args)
+      map = componentTable[type]
+    } else {
+      result = componentOrFactory
+    }
+
+    if (!map) {
+      throw new Error(
+        `Cannot add component instance of unregistered type: ${type}`,
+      )
+    }
+
+    const existing = map[entity]
+
+    if (existing) {
+      removeComponentFromEntity(entity, existing)
+    }
+
+    map[entity] = result
+
+    return true
   }
 
   function removeComponentFromEntity(
@@ -75,13 +110,18 @@ export function createComponentAdmin(initialPoolSize: number) {
     if (isComponentFactory(component)) {
       component = getComponent(entity, component)
     }
+
     const { type } = component
     const map = componentTable[type]
 
-    if (!map[entity]) {
+    if (!map) {
       throw new Error(
         `Attempted to remove component ${component.type} to unregistered entity ${entity}.`,
       )
+    }
+
+    if (!map[entity]) {
+      return false
     }
 
     delete map[entity]
@@ -99,7 +139,7 @@ export function createComponentAdmin(initialPoolSize: number) {
       componentPools[type].release(component)
     }
 
-    return entity
+    return true
   }
 
   function getComponent<F extends ComponentFactory>(
@@ -110,29 +150,21 @@ export function createComponentAdmin(initialPoolSize: number) {
     const component = componentTable[type][entity]
 
     if (component) {
-      return component as ComponentOfFactory<F>
+      return component as ComponentOf<F>
     }
 
     throw new Error(`Component ${type} not found on entity ${entity}.`)
   }
 
-  function tryGetComponent<F extends ComponentFactory>(
-    entity: Entity,
-    componentFactory: F,
-  ) {
-    try {
-      return getComponent(entity, componentFactory)
-    } catch {
-      return null
-    }
-  }
-
   return {
+    createComponentInstance,
     registerComponentFactory,
-    clearComponentsForEntity,
+    clearEntityComponents,
     addComponentToEntity,
     removeComponentFromEntity,
     getComponent,
-    tryGetComponent,
+    // debug
+    [$debug_component_table]: componentTable,
+    [$debug_component_pools]: componentPools,
   }
 }

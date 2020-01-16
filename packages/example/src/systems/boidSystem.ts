@@ -11,8 +11,7 @@ const separation = new Victor(0, 0)
 const alignment = new Victor(0, 0)
 const normalizedVelocity = new Victor(0, 0)
 
-const _sum = { x: 0, y: 0 }
-const _sum2 = { x: 0, y: 0 }
+const sum = { x: 0, y: 0 }
 
 export const boidSystem = createSystem(
   (world, entities) => {
@@ -29,21 +28,21 @@ export const boidSystem = createSystem(
       const velocity = world.getComponent(entity, Velocity)
       const numberOfNeighborsFar = neighbors.far.length
 
-      _sum.x = 0
-      _sum.y = 0
+      sum.x = 0
+      sum.y = 0
 
       for (let i = 0; i < numberOfNeighborsFar; i++) {
         const position = world.getComponent(neighbors.far[i], Transform)
-        _sum.x += position.x
-        _sum.y += position.y
+        sum.x += position.x
+        sum.y += position.y
       }
 
-      cohesion.x = _sum.x / numberOfNeighborsFar
-      cohesion.y = _sum.y / numberOfNeighborsFar
+      cohesion.x = sum.x / numberOfNeighborsFar
+      cohesion.y = sum.y / numberOfNeighborsFar
       cohesion.subtractScalarX(position.x)
       cohesion.subtractScalarY(position.y)
 
-      if (_sum.x === 0 && _sum.y === 0) {
+      if (sum.x === 0 && sum.y === 0) {
         boid.cohesionX = 0
         boid.cohesionY = 0
       } else {
@@ -53,21 +52,21 @@ export const boidSystem = createSystem(
 
       const numberOfNeighborsNear = neighbors.near.length
 
-      _sum2.x = 0
-      _sum2.y = 0
+      sum.x = 0
+      sum.y = 0
 
       for (let i = 0; i < numberOfNeighborsNear; i++) {
         const position = world.getComponent(neighbors.near[i], Transform)
-        _sum2.x += position.x
-        _sum2.y += position.y
+        sum.x += position.x
+        sum.y += position.y
       }
 
-      separation.x = _sum2.x / numberOfNeighborsNear
-      separation.y = _sum2.y / numberOfNeighborsNear
+      separation.x = sum.x / numberOfNeighborsNear
+      separation.y = sum.y / numberOfNeighborsNear
       separation.subtractScalarX(position.x)
       separation.subtractScalarY(position.y)
 
-      if (_sum2.x === 0 && _sum2.y === 0) {
+      if (sum.x === 0 && sum.y === 0) {
         boid.separationX = 0
         boid.separationY = 0
       } else {
@@ -80,7 +79,8 @@ export const boidSystem = createSystem(
       alignment.normalize()
 
       for (const neighbor of neighbors.far) {
-        const velocity = world.getComponent(neighbor, Velocity)!
+        const velocity = world.getComponent(neighbor, Velocity)
+
         alignment.addScalarX(velocity.x)
         alignment.addScalarY(velocity.y)
         alignment.normalize()

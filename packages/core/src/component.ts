@@ -7,6 +7,8 @@ export type Component<
   readonly type: T
 } & S
 
+export const $is_component_factory = Symbol("is_component_factory")
+
 export interface ComponentFactory<
   T extends ComponentType = ComponentType,
   S extends {} = any,
@@ -15,8 +17,9 @@ export interface ComponentFactory<
   type: T
   schema: S
   initialize: I
+  [$is_component_factory]: true
 }
 
-export type ComponentOfFactory<
+export type ComponentOf<
   F extends ComponentFactory
 > = F extends ComponentFactory<infer T, infer S> ? Component<T, S> : never

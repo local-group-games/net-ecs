@@ -1,4 +1,5 @@
 export * from "./boidSystem"
+export * from "./colorTransitionSystem"
 export * from "./movementSystem"
 export * from "./neighborSystem"
 export * from "./renderSystem"

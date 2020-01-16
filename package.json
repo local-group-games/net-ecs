@@ -8,5 +8,8 @@
   "dependencies": {
     "lerna": "^3.20.2",
     "typescript": "^3.7.4"
+  },
+  "scripts": {
+    "example": "lerna run start --scope=@net-ecs/example --stream"
   }
 }

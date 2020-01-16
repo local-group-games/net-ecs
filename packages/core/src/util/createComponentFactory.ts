@@ -1,4 +1,8 @@
-import { ComponentFactory, ComponentType } from "../component"
+import {
+  ComponentFactory,
+  ComponentType,
+  $is_component_factory,
+} from "../component"
 
 export function createComponentFactory<
   T extends ComponentType,
@@ -9,5 +13,6 @@ export function createComponentFactory<
     type,
     schema,
     initialize,
+    [$is_component_factory]: true,
   }
 }

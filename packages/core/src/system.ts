@@ -1,4 +1,3 @@
-import { ComponentFactory } from "./component"
 import { Entity } from "./entity"
 import { EntityAdmin } from "./entityAdmin"
 import { Selector } from "./selector"
