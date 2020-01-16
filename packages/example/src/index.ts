@@ -1,4 +1,4 @@
-import { createEntityAdmin } from "@net-ecs/core"
+import { createEntityAdmin, Entity } from "@net-ecs/core"
 import Victor from "victor"
 import { Boid, Color, Neighbors, Transform, Velocity } from "./components"
 import { app } from "./graphics"
@@ -14,9 +14,7 @@ import { stressSystem } from "./systems/stressSystem"
 const NUMBER_OF_BOIDS = 10
 
 const world = createEntityAdmin()
-const color = world.createComponentInstance(Color)
-
-const entities: any[] = []
+const entities: Entity[] = []
 
 function addBoid() {
   const velocity = new Victor(
@@ -33,7 +31,6 @@ function addBoid() {
   world.addComponentToEntity(entity, Boid)
   world.addComponentToEntity(entity, Neighbors)
   world.addComponentToEntity(entity, Velocity, velocity.x, velocity.y)
-  world.addComponentToEntity(entity, color)
 
   entities.push(entity)
 }
@@ -42,15 +39,15 @@ for (let i = 0; i < NUMBER_OF_BOIDS; i++) {
   addBoid()
 }
 
+world.createSingletonComponent(Color)
+
 world.addSystem(neighborSystem)
 world.addSystem(boidSystem)
 world.addSystem(movingSystem)
 world.addSystem(renderSystem)
 world.addSystem(colorTransitionSystem)
 
-app.ticker.add(() => {
-  world.tick(app.ticker.deltaMS / 1000)
-})
+app.ticker.add(() => world.tick(app.ticker.deltaMS / 1000))
 
 document.addEventListener("keydown", e => {
   if (e.key === "Enter") {

@@ -1,7 +1,7 @@
 import { Component, ComponentFactory, ComponentOf } from "./component"
 import {
-  $component_admin_debug_component_table,
   $component_admin_debug_component_pools,
+  $component_admin_debug_component_table,
 } from "./debug"
 import { Entity } from "./entity"
 import { createStackPool, StackPool } from "./pool/stackPool"

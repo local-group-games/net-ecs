@@ -273,6 +273,15 @@ export function createEntityAdmin(
     }
   }
 
+  function createSingletonComponent<C extends Component | ComponentFactory>(
+    componentFactory: C,
+    ...args: C extends ComponentFactory ? GetFactoryArguments<C> : never[]
+  ) {
+    const entity = createEntity()
+
+    addComponentToEntity(entity, componentFactory, ...args)
+  }
+
   const world = {
     addSystem,
     removeSystem,
@@ -288,6 +297,7 @@ export function createEntityAdmin(
     tryGetComponent,
     tryGetMutableComponent,
     createComponentInstance: componentAdmin.createComponentInstance,
+    createSingletonComponent,
     // debug
     [$entity_admin_debug_entities]: entities,
     [$entity_admin_debug_systems]: systems,

@@ -15,7 +15,10 @@ function fromRGBto32(red: number, green: number, blue: number) {
 }
 
 export const renderSystem = createSystem(
-  (world, entities) => {
+  (world, [color], entities) => {
+    const { red, green, blue } = world.getComponent(color, Color)
+    const color32 = fromRGBto32(red, green, blue)
+
     graphics.clear()
 
     entityCount.text = `${entities.length}`
@@ -28,10 +31,8 @@ export const renderSystem = createSystem(
       const entity = entities[i]
       const velocity = world.getComponent(entity, Velocity)
       const position = world.getComponent(entity, Transform)
-      const { red, green, blue } = world.getComponent(entities[0], Color)
-      const color = fromRGBto32(red, green, blue)
 
-      graphics.lineStyle(1, color)
+      graphics.lineStyle(1, color32)
       graphics.drawCircle(position.x, position.y, 4)
 
       renderVelocity.x = velocity.x
@@ -39,7 +40,7 @@ export const renderSystem = createSystem(
       renderVelocity.normalize()
       renderVelocity.multiplyScalar(10)
 
-      graphics.lineStyle(1, color, 1)
+      graphics.lineStyle(1, color32, 1)
       graphics.moveTo(position.x, position.y)
       graphics.lineTo(
         position.x + renderVelocity.x,
@@ -47,5 +48,6 @@ export const renderSystem = createSystem(
       )
     }
   },
-  [With(Transform), With(Velocity), With(Color)],
+  [With(Color)],
+  [With(Transform), With(Velocity)],
 )

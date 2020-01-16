@@ -1,4 +1,4 @@
-import { createSystem, With, ComponentOf } from "@net-ecs/core"
+import { ComponentOf, createSystem, With } from "@net-ecs/core"
 import { Color } from "../components"
 
 function transition(color: ComponentOf<typeof Color>) {
@@ -17,10 +17,6 @@ function transition(color: ComponentOf<typeof Color>) {
 }
 
 export const colorTransitionSystem = createSystem(
-  (world, entities) => {
-    if (entities.length > 0) {
-      transition(world.getMutableComponent(entities[0], Color))
-    }
-  },
+  (world, [color]) => transition(world.getMutableComponent(color, Color)),
   [With(Color)],
 )
