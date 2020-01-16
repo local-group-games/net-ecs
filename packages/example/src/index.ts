@@ -11,7 +11,7 @@ import {
 } from "./systems"
 import { stressSystem } from "./systems/stressSystem"
 
-const NUMBER_OF_BOIDS = 25
+const NUMBER_OF_BOIDS = 10
 
 const world = createEntityAdmin()
 const color = world.createComponentInstance(Color)
@@ -47,7 +47,6 @@ world.addSystem(boidSystem)
 world.addSystem(movingSystem)
 world.addSystem(renderSystem)
 world.addSystem(colorTransitionSystem)
-world.addSystem(stressSystem)
 
 app.ticker.add(() => {
   world.tick(app.ticker.deltaMS / 1000)
@@ -55,15 +54,21 @@ app.ticker.add(() => {
 
 document.addEventListener("keydown", e => {
   if (e.key === "Enter") {
-    app.ticker.started ? app.ticker.stop() : app.ticker.start()
+    if (world.hasSystem(stressSystem)) {
+      world.removeSystem(stressSystem)
+      console.log("stress system disabled")
+    } else {
+      world.addSystem(stressSystem)
+      console.log("stress system enabled")
+    }
   }
 
   if (e.key === "ArrowUp") {
-    for (let i = 0; i < 25; i++) addBoid()
+    for (let i = 0; i < NUMBER_OF_BOIDS; i++) addBoid()
   }
 
   if (e.key === "ArrowDown") {
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < NUMBER_OF_BOIDS; i++) {
       const e = entities.pop()
 
       if (e) {

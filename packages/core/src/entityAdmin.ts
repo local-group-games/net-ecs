@@ -1,5 +1,11 @@
 import { Component, ComponentFactory } from "./component"
 import { createComponentAdmin } from "./componentAdmin"
+import {
+  $entity_admin_debug_component_admin,
+  $entity_admin_debug_entities,
+  $entity_admin_debug_systems,
+  $entity_admin_debug_system_query_results,
+} from "./debug"
 import { Entity } from "./entity"
 import { Selector, SelectorType } from "./selector"
 import { System, SystemQueryResult } from "./system"
@@ -26,11 +32,6 @@ const defaultOptions: EntityAdminConfig = {
   initialPoolSize: 500,
 }
 
-const $debug_entities = Symbol("debug_entities")
-const $debug_systems = Symbol("debug_systems")
-const $debug_system_query_results = Symbol("debug_system_query_results")
-const $debug_component_admin = Symbol("debug_component_admin")
-
 export function createEntityAdmin(
   options: EntityAdminOptions = defaultOptions,
 ) {
@@ -56,6 +57,10 @@ export function createEntityAdmin(
   let entitySequence = 0
 
   function addSystem(system: System) {
+    if (hasSystem(system)) {
+      throw new Error(`System already registered`)
+    }
+
     const results = system.query.map(() => [])
 
     systems.push(system)
@@ -65,7 +70,15 @@ export function createEntityAdmin(
   }
 
   function removeSystem(system: System) {
+    if (!hasSystem(system)) {
+      return
+    }
     mutableRemove(systems, system)
+    systemQueryResults.delete(system)
+  }
+
+  function hasSystem(system: System) {
+    return systems.indexOf(system) > -1
   }
 
   function select(selector: Selector, entity: Entity) {
@@ -263,6 +276,7 @@ export function createEntityAdmin(
   const world = {
     addSystem,
     removeSystem,
+    hasSystem,
     clock,
     tick,
     createEntity,
@@ -275,10 +289,10 @@ export function createEntityAdmin(
     tryGetMutableComponent,
     createComponentInstance: componentAdmin.createComponentInstance,
     // debug
-    [$debug_entities]: entities,
-    [$debug_systems]: systems,
-    [$debug_system_query_results]: systemQueryResults,
-    [$debug_component_admin]: componentAdmin,
+    [$entity_admin_debug_entities]: entities,
+    [$entity_admin_debug_systems]: systems,
+    [$entity_admin_debug_system_query_results]: systemQueryResults,
+    [$entity_admin_debug_component_admin]: componentAdmin,
   }
 
   return world

@@ -1,4 +1,8 @@
 import { Component, ComponentFactory, ComponentOf } from "./component"
+import {
+  $component_admin_debug_component_table,
+  $component_admin_debug_component_pools,
+} from "./debug"
 import { Entity } from "./entity"
 import { createStackPool, StackPool } from "./pool/stackPool"
 import { GetFactoryArguments } from "./types/util"
@@ -8,9 +12,6 @@ import { isComponentFactory } from "./util/isComponentFactory"
 type ComponentTable = {
   [componentType: string]: { [entity: number]: Component | null }
 }
-
-const $debug_component_table = Symbol("debug_component_table")
-const $debug_component_pools = Symbol("debug_component_pools")
 
 export function createComponentAdmin(initialPoolSize: number) {
   const componentTable: ComponentTable = {}
@@ -164,7 +165,7 @@ export function createComponentAdmin(initialPoolSize: number) {
     removeComponentFromEntity,
     getComponent,
     // debug
-    [$debug_component_table]: componentTable,
-    [$debug_component_pools]: componentPools,
+    [$component_admin_debug_component_table]: componentTable,
+    [$component_admin_debug_component_pools]: componentPools,
   }
 }
