@@ -9,6 +9,7 @@ const v1 = new Victor(0, 0)
 const v2 = new Victor(0, 0)
 
 export const neighborSystem = createSystem(
+  "neighborSystem",
   (world, entities) => {
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]

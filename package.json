@@ -11,5 +11,8 @@
   },
   "scripts": {
     "example": "lerna run start --scope=@net-ecs/example --stream"
-  }
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }

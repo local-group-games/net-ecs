@@ -11,6 +11,7 @@ const ComponentB = createComponentFactory("B", { n: 0 }, (obj, n: number) => {
 })
 
 export const stressSystem = createSystem(
+  "stressSystem",
   (world, a, b, neither) => {
     for (let i = 0; i < a.length; i++) {
       if (Math.random() > 0.5) {

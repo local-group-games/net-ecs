@@ -9,13 +9,15 @@ export type SystemQueryResult<Q extends SystemQuery = SystemQuery> = {
 }
 
 export type System<Q extends SystemQuery = SystemQuery> = {
+  name: string
   update(world: EntityAdmin, ...queryResults: SystemQueryResult<Q>): void
   query: Q
 }
 
 export function createSystem<Q extends SystemQuery>(
+  name: string,
   update: (world: EntityAdmin, ...queryResults: SystemQueryResult<Q>) => void,
   ...query: Q
 ): System<Q> {
-  return { update, query }
+  return { name, update, query }
 }

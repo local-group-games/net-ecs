@@ -1,19 +1,33 @@
-export const $component_admin_debug_component_table = Symbol(
-  "component_admin_debug_component_table",
+import { Signal } from "./signal"
+import { EntityAdmin } from "./entityAdmin"
+
+// ComponentAdmin
+export const debug_$componentAdminComponentTable = Symbol(
+  "componentAdminComponentTable",
 )
-export const $component_admin_debug_component_pools = Symbol(
-  "component_admin_debug_component_pools",
+export const debug_$componentAdminComponentPools = Symbol(
+  "componentAdminComponentPools",
 )
 
-export const $entity_admin_debug_entities = Symbol(
-  "entity_admin_debug_entities",
+// EntityAdmin
+export const debug_$entityAdminEntities = Symbol("entityAdminEntities")
+export const debug_$entityAdminSystems = Symbol("entityAdminSystems")
+export const debug_$entityAdminSystemQueryResults = Symbol(
+  "entityAdminSystemQueryResults",
 )
-export const $entity_admin_debug_systems = Symbol("entity_admin_debug_systems")
-export const $entity_admin_debug_system_query_results = Symbol(
-  "entity_admin_debug_system_query_results",
-)
-export const $entity_admin_debug_component_admin = Symbol(
-  "entity_admin_debug_component_admin",
+export const debug_$entityAdminComponentAdmin = Symbol(
+  "entityAdminComponentAdmin",
 )
 
-export const $stack_pool_debug_heap = Symbol("stack_pool_debug_heap")
+// StackPool
+export const debug_$stackPoolHeap = Symbol("stackPoolHeap")
+
+// Tools
+export const debug_entityAdminAdded = new Signal<EntityAdmin>()
+export const debug_ticked = new Signal<EntityAdmin>()
+
+export const debug_entityAdminInstances: EntityAdmin[] = []
+
+debug_entityAdminAdded.subscribe(entityAdmin =>
+  debug_entityAdminInstances.push(entityAdmin),
+)

@@ -3,7 +3,7 @@ const { addWebpackAlias, babelInclude, override } = require("customize-cra")
 const ModuleScopePlugin = require("react-dev-utils/ModuleScopePlugin")
 const resolvePackageDirectory = package =>
   path.dirname(require.resolve(`${package}/package.json`))
-const monorepoPackages = ["@net-ecs/core"]
+const monorepoPackages = ["@net-ecs/core", "@net-ecs/debug"]
 const monorepoWebpackAliases = monorepoPackages.reduce((acc, packageName) => {
   acc[packageName] = path.join(resolvePackageDirectory(packageName), "src")
   return acc
@@ -15,9 +15,6 @@ module.exports = config => {
   )
 
   return override(
-    addWebpackAlias({
-      three$: path.resolve("./src/exports/three.ts"),
-    }),
     process.env.NODE_ENV === "development" &&
       babelInclude(
         Object.values(monorepoWebpackAliases).concat(path.resolve("src")),

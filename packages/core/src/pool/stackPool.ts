@@ -1,10 +1,10 @@
-import { $stack_pool_debug_heap } from "../debug"
+import { debug_$stackPoolHeap } from "../debug"
 
 export interface StackPool<T> {
   allocate: () => void
   retain: () => T
   release: (obj: T) => void
-  [$stack_pool_debug_heap]: T[]
+  [debug_$stackPoolHeap]: T[]
 }
 
 export function createStackPool<T>(
@@ -34,6 +34,6 @@ export function createStackPool<T>(
     retain,
     release,
     // debug
-    [$stack_pool_debug_heap]: heap,
+    [debug_$stackPoolHeap]: heap,
   }
 }

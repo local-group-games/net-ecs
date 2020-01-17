@@ -10,6 +10,9 @@ import {
   renderSystem,
 } from "./systems"
 import { stressSystem } from "./systems/stressSystem"
+import { mount } from "@net-ecs/debug"
+
+mount(document.getElementById("ui")!)
 
 const NUMBER_OF_BOIDS = 10
 
@@ -60,11 +63,11 @@ document.addEventListener("keydown", e => {
     }
   }
 
-  if (e.key === "ArrowUp") {
+  if (e.key === "1") {
     for (let i = 0; i < NUMBER_OF_BOIDS; i++) addBoid()
   }
 
-  if (e.key === "ArrowDown") {
+  if (e.key === "2") {
     for (let i = 0; i < NUMBER_OF_BOIDS; i++) {
       const e = entities.pop()
 

@@ -1,10 +1,12 @@
 import { Component, ComponentFactory } from "./component"
 import { createComponentAdmin } from "./componentAdmin"
 import {
-  $entity_admin_debug_component_admin,
-  $entity_admin_debug_entities,
-  $entity_admin_debug_systems,
-  $entity_admin_debug_system_query_results,
+  debug_$entityAdminComponentAdmin,
+  debug_$entityAdminEntities,
+  debug_$entityAdminSystemQueryResults,
+  debug_$entityAdminSystems,
+  debug_entityAdminAdded,
+  debug_ticked,
 } from "./debug"
 import { Entity } from "./entity"
 import { Selector, SelectorType } from "./selector"
@@ -45,7 +47,7 @@ export function createEntityAdmin(
   const entities = new Set<Entity>()
   const componentAdmin = createComponentAdmin(config.initialPoolSize)
   const systems: System[] = []
-  const systemQueryResults = new WeakMap<System, SystemQueryResult>()
+  const systemQueryResults = new Map<System, SystemQueryResult>()
   const entitiesToUpdateNextTick = new Set<Entity>()
   const tags = {
     [EntityTag.Added]: new Set<Entity>(),
@@ -175,7 +177,7 @@ export function createEntityAdmin(
       const result = systemQueryResults.get(system)
 
       if (result) {
-        system.update(world, ...result)
+        system.update(entityAdmin, ...result)
       }
     }
 
@@ -184,6 +186,7 @@ export function createEntityAdmin(
     }
 
     entitiesToUpdateNextTick.clear()
+    debug_ticked.dispatch(entityAdmin)
   }
 
   function createEntity() {
@@ -278,7 +281,7 @@ export function createEntityAdmin(
     addComponentToEntity(entity, componentFactory, ...args)
   }
 
-  const world = {
+  const entityAdmin = {
     addSystem,
     removeSystem,
     hasSystem,
@@ -295,13 +298,15 @@ export function createEntityAdmin(
     createComponentInstance: componentAdmin.createComponentInstance,
     createSingletonComponent,
     // debug
-    [$entity_admin_debug_entities]: entities,
-    [$entity_admin_debug_systems]: systems,
-    [$entity_admin_debug_system_query_results]: systemQueryResults,
-    [$entity_admin_debug_component_admin]: componentAdmin,
+    [debug_$entityAdminEntities]: entities,
+    [debug_$entityAdminSystems]: systems,
+    [debug_$entityAdminSystemQueryResults]: systemQueryResults,
+    [debug_$entityAdminComponentAdmin]: componentAdmin,
   }
 
-  return world
+  debug_entityAdminAdded.dispatch(entityAdmin)
+
+  return entityAdmin
 }
 
 export type EntityAdmin = ReturnType<typeof createEntityAdmin>

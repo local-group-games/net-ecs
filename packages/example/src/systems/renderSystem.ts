@@ -1,7 +1,7 @@
 import { createSystem, With } from "@net-ecs/core"
 import Victor from "victor"
 import { Color, Transform, Velocity } from "../components"
-import { app, entityCount, fps, graphics } from "../graphics"
+import { app, fps, graphics } from "../graphics"
 
 const renderVelocity = new Victor(0, 0)
 
@@ -15,13 +15,12 @@ function fromRGBto32(red: number, green: number, blue: number) {
 }
 
 export const renderSystem = createSystem(
+  "renderSystem",
   (world, [color], entities) => {
     const { red, green, blue } = world.getComponent(color, Color)
     const color32 = fromRGBto32(red, green, blue)
 
     graphics.clear()
-
-    entityCount.text = `${entities.length}`
 
     if (world.clock.tick % 60 === 0) {
       fps.text = `${app.ticker.FPS.toFixed(0)}`

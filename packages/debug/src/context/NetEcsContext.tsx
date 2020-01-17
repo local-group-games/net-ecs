@@ -1,0 +1,199 @@
+import {
+  debug_$componentAdminComponentPools,
+  debug_$componentAdminComponentTable,
+  debug_$entityAdminComponentAdmin,
+  debug_$entityAdminEntities,
+  debug_$stackPoolHeap,
+  debug_entityAdminAdded,
+  debug_entityAdminInstances,
+  debug_ticked,
+  EntityAdmin,
+  debug_$entityAdminSystemQueryResults,
+  SelectorType,
+} from "@net-ecs/core"
+import React, {
+  createContext,
+  PropsWithChildren,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react"
+
+type EntityAdminStats = {
+  entityCount: number
+  componentCount: number
+  componentTypes: { [componentType: string]: number }
+  componentPools: { [componentType: string]: number }
+  systems: { [systemName: string]: { [queryString: string]: number } }
+}
+
+type EntityAdminDetails = {
+  entityAdmin: EntityAdmin
+  stats: EntityAdminStats
+}
+
+type NetEcsContext = {
+  entityAdmins: EntityAdmin[]
+  currentEntityAdminDetails: EntityAdminDetails | null
+  setEntityAdmin: (entityAdmin: EntityAdmin) => void
+}
+
+const netEcsContext = createContext<NetEcsContext>({
+  entityAdmins: [],
+  currentEntityAdminDetails: null,
+  setEntityAdmin: (entityAdmin: EntityAdmin) => {},
+})
+
+type NetEcsProviderProps = PropsWithChildren<{}>
+
+function getReadableSelectorTypeName(selectorType: SelectorType) {
+  switch (selectorType) {
+    case SelectorType.Added:
+      return "Added"
+    case SelectorType.Changed:
+      return "Changed"
+    case SelectorType.Removed:
+      return "Removed"
+    case SelectorType.With:
+      return "With"
+    case SelectorType.Without:
+      return "Without"
+  }
+}
+
+function getEntityAdminStats(entityAdmin: EntityAdmin): EntityAdminStats {
+  const entityCount = entityAdmin[debug_$entityAdminEntities].size
+  const systemQueryResults = entityAdmin[debug_$entityAdminSystemQueryResults]
+  const componentAdmin = entityAdmin[debug_$entityAdminComponentAdmin]
+  const componentTable = componentAdmin[debug_$componentAdminComponentTable]
+  const componentPools = componentAdmin[debug_$componentAdminComponentPools]
+  const componentCount = Object.values(componentTable).reduce(
+    (a, o) => a + Object.keys(o).length,
+    0,
+  )
+  const componentTypes = Object.entries(componentTable).reduce(
+    (a, [componentType, map]) => ({
+      ...a,
+      [componentType]: Object.keys(map).length,
+    }),
+    {},
+  )
+  const poolData = Object.entries(componentPools).reduce(
+    (a, [componentType, pool]) => ({
+      ...a,
+      [componentType]: pool[debug_$stackPoolHeap].length,
+    }),
+    {},
+  )
+  const systemData = Array.from(systemQueryResults).reduce(
+    (a, [system, results]) => {
+      a[system.name] = system.query.reduce((selectorResults, query, i) => {
+        const key = query
+          .map(
+            x =>
+              `${getReadableSelectorTypeName(x.selectorType)}(${
+                x.componentFactory.type
+              })`,
+          )
+          .join(",")
+
+        selectorResults[key] = results[i].length
+        return selectorResults
+      }, {} as { [key: string]: number })
+      return a
+    },
+    {} as { [key: string]: { [key: string]: number } },
+  )
+
+  return {
+    entityCount,
+    componentCount,
+    componentTypes,
+    componentPools: poolData,
+    systems: systemData,
+  }
+}
+
+export const NetEcsProvider = (props: NetEcsProviderProps) => {
+  const [
+    currentEntityAdminDetails,
+    setCurrentEntityAdminDetails,
+  ] = useState<EntityAdminDetails | null>(null)
+  const [entityAdmins, setEntityAdmins] = useState<EntityAdmin[]>(
+    debug_entityAdminInstances,
+  )
+  const addEntityAdmin = useCallback(() => {
+    const entityAdminInstances = debug_entityAdminInstances.slice()
+
+    setEntityAdmins(entityAdminInstances.slice())
+
+    if (entityAdminInstances.length === 1) {
+      const entityAdmin = entityAdminInstances[0]
+
+      setCurrentEntityAdminDetails({
+        entityAdmin,
+        stats: getEntityAdminStats(entityAdmin),
+      })
+    }
+  }, [entityAdmins])
+
+  function onTick(entityAdmin: EntityAdmin) {
+    if (
+      !currentEntityAdminDetails ||
+      entityAdmin !== currentEntityAdminDetails.entityAdmin
+    ) {
+      return
+    }
+
+    if (entityAdmin.clock.tick % 60 === 0) {
+      updateCurrentEntityAdminStats()
+    }
+  }
+
+  function updateCurrentEntityAdminStats() {
+    if (!currentEntityAdminDetails) {
+      return
+    }
+
+    setCurrentEntityAdminDetails({
+      ...currentEntityAdminDetails,
+      stats: getEntityAdminStats(currentEntityAdminDetails.entityAdmin),
+    })
+  }
+
+  useEffect(() => {
+    debug_ticked.subscribe(onTick)
+    return () => debug_ticked.unsubscribe(onTick)
+  }, [currentEntityAdminDetails])
+
+  useEffect(() => {
+    debug_entityAdminAdded.subscribe(addEntityAdmin)
+    return () => debug_entityAdminAdded.unsubscribe(addEntityAdmin)
+  }, [])
+
+  function setEntityAdmin(entityAdmin: EntityAdmin) {
+    const stats = getEntityAdminStats(entityAdmin)
+
+    setCurrentEntityAdminDetails({
+      entityAdmin,
+      stats,
+    })
+  }
+
+  const api: NetEcsContext = {
+    entityAdmins,
+    currentEntityAdminDetails,
+    setEntityAdmin,
+  }
+
+  return (
+    <netEcsContext.Provider value={api}>
+      {props.children}
+    </netEcsContext.Provider>
+  )
+}
+
+export function useNetECS() {
+  return useContext(netEcsContext)
+}

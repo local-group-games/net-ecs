@@ -1,7 +1,7 @@
 import { Component, ComponentFactory, ComponentOf } from "./component"
 import {
-  $component_admin_debug_component_pools,
-  $component_admin_debug_component_table,
+  debug_$componentAdminComponentPools,
+  debug_$componentAdminComponentTable,
 } from "./debug"
 import { createStackPool, StackPool } from "./pool/stackPool"
 import { GetFactoryArguments } from "./types/util"
@@ -9,7 +9,7 @@ import { resetObject } from "./util"
 import { isComponentFactory } from "./util/isComponentFactory"
 
 type ComponentTable = {
-  [componentType: string]: { [key: number]: Component | null }
+  [componentType: string]: { [key: number]: Component }
 }
 
 export function createComponentAdmin(initialPoolSize: number) {
@@ -97,12 +97,11 @@ export function createComponentAdmin(initialPoolSize: number) {
 
   function removeComponent(
     key: number,
-    component: Component | ComponentFactory,
+    componentOrFactory: Component | ComponentFactory,
   ) {
-    if (isComponentFactory(component)) {
-      component = getComponent(key, component)
-    }
-
+    const component = isComponentFactory(componentOrFactory)
+      ? getComponent(key, componentOrFactory)
+      : componentOrFactory
     const { type } = component
     const map = componentTable[type]
 
@@ -145,7 +144,7 @@ export function createComponentAdmin(initialPoolSize: number) {
     removeComponent,
     getComponent,
     // debug
-    [$component_admin_debug_component_table]: componentTable,
-    [$component_admin_debug_component_pools]: componentPools,
+    [debug_$componentAdminComponentTable]: componentTable,
+    [debug_$componentAdminComponentPools]: componentPools,
   }
 }
