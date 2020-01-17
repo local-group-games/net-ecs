@@ -143,7 +143,7 @@ export function createEntityAdmin(
     }
 
     for (const entity of tags[EntityTag.Deleted]) {
-      componentAdmin.clearEntityComponents(entity)
+      componentAdmin.clearComponents(entity)
       updateAllQueriesForEntity(entity)
       entitiesToUpdateNextTick.add(entity)
     }
@@ -205,10 +205,10 @@ export function createEntityAdmin(
     return entity
   }
 
-  function addComponentToEntity<C extends ComponentFactory | Component>(
+  function addComponentToEntity<F extends ComponentFactory>(
     entity: Entity,
-    componentOrFactory: C,
-    ...args: C extends ComponentFactory ? GetFactoryArguments<C> : never[]
+    componentFactory: F,
+    ...args: GetFactoryArguments<F>
   ) {
     if (tags[EntityTag.Deleted].has(entity) || !entities.has(entity)) {
       return false
@@ -216,11 +216,7 @@ export function createEntityAdmin(
 
     tags[EntityTag.ComponentsChanged].add(entity)
 
-    return componentAdmin.addComponentToEntity(
-      entity,
-      componentOrFactory,
-      ...args,
-    )
+    return componentAdmin.addComponent(entity, componentFactory, ...args)
   }
 
   function removeComponentFromEntity(
@@ -231,7 +227,7 @@ export function createEntityAdmin(
       return false
     }
 
-    const result = componentAdmin.removeComponentFromEntity(entity, component)
+    const result = componentAdmin.removeComponent(entity, component)
 
     if (result) {
       tags[EntityTag.ComponentsChanged].add(entity)
@@ -273,9 +269,9 @@ export function createEntityAdmin(
     }
   }
 
-  function createSingletonComponent<C extends Component | ComponentFactory>(
+  function createSingletonComponent<C extends ComponentFactory>(
     componentFactory: C,
-    ...args: C extends ComponentFactory ? GetFactoryArguments<C> : never[]
+    ...args: GetFactoryArguments<C>
   ) {
     const entity = createEntity()
 
