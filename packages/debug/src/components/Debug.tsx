@@ -1,12 +1,15 @@
 import React, { PropsWithChildren, ChangeEvent, ComponentProps } from "react"
 import styled from "styled-components"
 import { useNetECS } from "../context/NetEcsContext"
+import { stressSystem } from "../systems"
 
 const Panel = styled.section`
   font-size: 14px;
   font-family: "PragmataPro Mono", monospace;
   background-color: #333;
   color: #f0f0f0;
+  height: 100%;
+  overflow: scroll;
 `
 
 const PanelTitle = styled.header`
@@ -17,7 +20,7 @@ const PanelTitle = styled.header`
 const PanelContent = styled.div`
   padding: 8px;
   display: grid;
-  grid-template-columns: 33.33333% 33.33333% 33.33333%;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 `
 
 const PanelDetails = styled.details`
@@ -25,8 +28,6 @@ const PanelDetails = styled.details`
 
   ul {
     list-style-type: none;
-    margin: 0;
-    padding: 0;
   }
 
   dl {
@@ -37,11 +38,26 @@ const PanelDetails = styled.details`
       padding: 2px 4px;
       text-align: right;
       background-color: #444;
+      word-break: break-word;
     }
 
     dd {
-      padding: 2px 4px;
+      padding: 4px;
       margin: 0;
+    }
+  }
+
+  summary {
+    cursor: pointer;
+    padding: 4px;
+    outline: none;
+
+    &:hover {
+      background-color: #444;
+    }
+    &:active,
+    &:focus {
+      background-color: #666;
     }
   }
 `
@@ -121,6 +137,16 @@ export const Debug = () => {
     setEntityAdmin(entityAdmin)
   }
 
+  function onStressSystemToggle(e: React.ChangeEvent<HTMLInputElement>) {
+    const checked = e.target.checked
+
+    if (checked) {
+      entityAdmin.addSystem(stressSystem)
+    } else {
+      entityAdmin.removeSystem(stressSystem)
+    }
+  }
+
   return (
     <Panel>
       <PanelTitle>net-ecs debug</PanelTitle>
@@ -140,13 +166,23 @@ export const Debug = () => {
             <dd>{componentCount}</dd>
           </dl>
         </PanelDrawer>
-        <PanelDrawer open title="components">
+        <PanelDrawer title="components">
           <dl>{componentUI}</dl>
         </PanelDrawer>
-        <PanelDrawer open title="pools">
+        <PanelDrawer title="pools">
           <dl>{poolUI}</dl>
         </PanelDrawer>
         <PanelDrawer title="systems">{systemUI}</PanelDrawer>
+        <PanelDrawer title="debug systems">
+          <ul>
+            <li>
+              <label>
+                <input type="checkbox" onChange={onStressSystemToggle} />
+                <span>stress system</span>
+              </label>
+            </li>
+          </ul>
+        </PanelDrawer>
       </PanelContent>
     </Panel>
   )

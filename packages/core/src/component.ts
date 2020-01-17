@@ -17,6 +17,7 @@ export interface ComponentFactory<
   type: T
   schema: S
   initialize: I
+  pool: boolean
   [$is_component_factory]: true
 }
 

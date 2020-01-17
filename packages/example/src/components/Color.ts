@@ -19,4 +19,5 @@ export const Color = createComponentFactory(
     color.green = green
     color.blue = blue
   },
+  false,
 )

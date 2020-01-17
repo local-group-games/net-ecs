@@ -9,7 +9,6 @@ import {
   neighborSystem,
   renderSystem,
 } from "./systems"
-import { stressSystem } from "./systems/stressSystem"
 import { mount } from "@net-ecs/debug"
 
 mount(document.getElementById("ui")!)
@@ -53,16 +52,6 @@ world.addSystem(colorTransitionSystem)
 app.ticker.add(() => world.tick(app.ticker.deltaMS / 1000))
 
 document.addEventListener("keydown", e => {
-  if (e.key === "Enter") {
-    if (world.hasSystem(stressSystem)) {
-      world.removeSystem(stressSystem)
-      console.log("stress system disabled")
-    } else {
-      world.addSystem(stressSystem)
-      console.log("stress system enabled")
-    }
-  }
-
   if (e.key === "1") {
     for (let i = 0; i < NUMBER_OF_BOIDS; i++) addBoid()
   }

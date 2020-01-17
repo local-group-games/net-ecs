@@ -32,11 +32,14 @@ export function createComponentAdmin(initialPoolSize: number) {
 
       return reset(obj)
     }
-    const componentPool = createStackPool(create, release, initialPoolSize)
     const map = {}
 
+    if (componentFactory.pool) {
+      const componentPool = createStackPool(create, release, initialPoolSize)
+      componentPools[type] = componentPool
+    }
+
     componentTable[type] = map
-    componentPools[type] = componentPool
 
     return map
   }
@@ -55,14 +58,14 @@ export function createComponentAdmin(initialPoolSize: number) {
     componentFactory: F,
     ...args: GetFactoryArguments<F>
   ) {
-    const { type, initialize } = componentFactory
+    const { type, schema, initialize } = componentFactory
 
     if (!componentTable[type]) {
       registerComponentFactory(componentFactory)
     }
 
     const pool = componentPools[type]
-    const component = pool.retain()
+    const component = pool ? pool.retain() : Object.assign({}, schema)
 
     initialize(component, ...args)
 
@@ -117,7 +120,9 @@ export function createComponentAdmin(initialPoolSize: number) {
 
     delete map[key]
 
-    componentPools[type].release(component)
+    if (componentPools[type]) {
+      componentPools[type].release(component)
+    }
 
     return true
   }

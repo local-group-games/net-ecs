@@ -10,7 +10,7 @@ export const fps = new PIXI.Text("0", {
 
 fps.x = 750
 
-document.body.appendChild(app.view)
+document.getElementById("game")!.appendChild(app.view)
 app.stage.addChild(graphics)
 
 app.stage.addChild(fps)
