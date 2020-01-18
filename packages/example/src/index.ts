@@ -16,6 +16,7 @@ mount(document.getElementById("ui")!)
 const NUMBER_OF_BOIDS = 10
 
 const world = createEntityAdmin()
+const debug_world = createEntityAdmin()
 const entities: Entity[] = []
 
 function addBoid() {

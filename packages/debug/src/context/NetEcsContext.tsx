@@ -21,10 +21,9 @@ import React, {
 } from "react"
 
 type EntityAdminStats = {
-  entityCount: number
-  componentCount: number
-  componentTypes: { [componentType: string]: number }
-  componentPools: { [componentType: string]: number }
+  entities: number[]
+  components: { [componentType: string]: number }
+  pools: { [componentType: string]: number }
   systems: { [systemName: string]: { [queryString: string]: number } }
 }
 
@@ -63,30 +62,26 @@ function getReadableSelectorTypeName(selectorType: SelectorType) {
 }
 
 function getEntityAdminStats(entityAdmin: EntityAdmin): EntityAdminStats {
-  const entityCount = entityAdmin[debug_$entityAdminEntities].size
+  const entities = Array.from(entityAdmin[debug_$entityAdminEntities])
   const systemQueryResults = entityAdmin[debug_$entityAdminSystemQueryResults]
   const componentAdmin = entityAdmin[debug_$entityAdminComponentAdmin]
   const componentTable = componentAdmin[debug_$componentAdminComponentTable]
   const componentPools = componentAdmin[debug_$componentAdminComponentPools]
-  const componentCount = Object.values(componentTable).reduce(
-    (a, o) => a + Object.keys(o).length,
-    0,
-  )
-  const componentTypes = Object.entries(componentTable).reduce(
+  const components = Object.entries(componentTable).reduce(
     (a, [componentType, map]) => ({
       ...a,
       [componentType]: Object.keys(map).length,
     }),
     {},
   )
-  const poolData = Object.entries(componentPools).reduce(
+  const pools = Object.entries(componentPools).reduce(
     (a, [componentType, pool]) => ({
       ...a,
       [componentType]: pool[debug_$stackPoolHeap].length,
     }),
     {},
   )
-  const systemData = Array.from(systemQueryResults).reduce(
+  const systems = Array.from(systemQueryResults).reduce(
     (a, [system, results]) => {
       a[system.name] = system.query.reduce((selectorResults, query, i) => {
         const key = query
@@ -107,11 +102,10 @@ function getEntityAdminStats(entityAdmin: EntityAdmin): EntityAdminStats {
   )
 
   return {
-    entityCount,
-    componentCount,
-    componentTypes,
-    componentPools: poolData,
-    systems: systemData,
+    entities,
+    components,
+    pools,
+    systems,
   }
 }
 
