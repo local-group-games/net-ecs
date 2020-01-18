@@ -208,7 +208,7 @@ export function createEntityAdmin(
     return entity
   }
 
-  function addComponentToEntity<F extends ComponentFactory>(
+  function addComponent<F extends ComponentFactory>(
     entity: Entity,
     componentFactory: F,
     ...args: GetFactoryArguments<F>
@@ -222,7 +222,7 @@ export function createEntityAdmin(
     return componentAdmin.addComponent(entity, componentFactory, ...args)
   }
 
-  function removeComponentFromEntity(
+  function removeComponent(
     entity: Entity,
     component: Component | ComponentFactory,
   ) {
@@ -278,7 +278,7 @@ export function createEntityAdmin(
   ) {
     const entity = createEntity()
 
-    addComponentToEntity(entity, componentFactory, ...args)
+    addComponent(entity, componentFactory, ...args)
   }
 
   const entityAdmin = {
@@ -289,8 +289,8 @@ export function createEntityAdmin(
     tick,
     createEntity,
     destroyEntity,
-    addComponentToEntity,
-    removeComponentFromEntity,
+    addComponent,
+    removeComponent,
     getComponent: componentAdmin.getComponent,
     getMutableComponent,
     tryGetComponent,

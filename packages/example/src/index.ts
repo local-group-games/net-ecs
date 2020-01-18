@@ -16,7 +16,6 @@ mount(document.getElementById("ui")!)
 const NUMBER_OF_BOIDS = 10
 
 const world = createEntityAdmin()
-const debug_world = createEntityAdmin()
 const entities: Entity[] = []
 
 function addBoid() {
@@ -25,15 +24,15 @@ function addBoid() {
     Math.random() * 2 - 1,
   ).normalize()
   const entity = world.createEntity()
-  world.addComponentToEntity(
+  world.addComponent(
     entity,
     Transform,
     Math.random() * 800,
     Math.random() * 600,
   )
-  world.addComponentToEntity(entity, Boid)
-  world.addComponentToEntity(entity, Neighbors)
-  world.addComponentToEntity(entity, Velocity, velocity.x, velocity.y)
+  world.addComponent(entity, Boid)
+  world.addComponent(entity, Neighbors)
+  world.addComponent(entity, Velocity, velocity.x, velocity.y)
 
   entities.push(entity)
 }

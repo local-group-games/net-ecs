@@ -18,6 +18,7 @@ import React, {
   useContext,
   useEffect,
   useState,
+  useRef,
 } from "react"
 
 type EntityAdminStats = {
@@ -132,6 +133,8 @@ export const NetEcsProvider = (props: NetEcsProviderProps) => {
     }
   }, [entityAdmins])
 
+  const previousTime = useRef(performance.now())
+
   function onTick(entityAdmin: EntityAdmin) {
     if (
       !currentEntityAdminDetails ||
@@ -140,8 +143,11 @@ export const NetEcsProvider = (props: NetEcsProviderProps) => {
       return
     }
 
-    if (entityAdmin.clock.tick % 60 === 0) {
+    const now = performance.now()
+
+    if (now - previousTime.current > 1000) {
       updateCurrentEntityAdminStats()
+      previousTime.current = now
     }
   }
 
