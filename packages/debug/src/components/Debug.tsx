@@ -3,19 +3,13 @@ import { useNetECS } from "../context/NetEcsContext"
 import { Panel, PanelCard, PanelDrawer } from "./Panel"
 
 export const Debug = () => {
-  const debug = useNetECS()
+  const { view } = useNetECS()
 
-  if (!debug.currentEntityAdminDetails) {
+  if (!view) {
     return null
   }
 
-  const {
-    entityAdmins,
-    currentEntityAdminDetails: {
-      stats: { entities, components, pools, systems },
-    },
-    setEntityAdmin,
-  } = debug
+  const { entities, componentTable, componentPools, systems } = view
 
   const totalsCard = (
     <PanelCard title="totals" key="totals">
@@ -24,7 +18,12 @@ export const Debug = () => {
           <dt>entities</dt>
           <dd>{entities.length}</dd>
           <dt>components</dt>
-          <dd>{Object.values(components).reduce((a, x) => a + x, 0)}</dd>
+          <dd>
+            {Object.values(componentTable).reduce(
+              (a, x) => a + Object.keys(x).length,
+              0,
+            )}
+          </dd>
           <dt>systems</dt>
           <dd>{Object.keys(systems).length}</dd>
         </React.Fragment>
@@ -32,9 +31,9 @@ export const Debug = () => {
     </PanelCard>
   )
   const poolsCard = (
-    <PanelCard title="pools" key="pools">
+    <PanelCard title="component pools" key="componentPools">
       <dl>
-        {Object.entries(pools).map(([componentType, heapSize]) => (
+        {Object.entries(componentPools).map(([componentType, heapSize]) => (
           <React.Fragment key={componentType}>
             <dt>{componentType}</dt>
             <dd>{heapSize}</dd>
@@ -43,13 +42,13 @@ export const Debug = () => {
       </dl>
     </PanelCard>
   )
-  const componentsCard = (
+  const componentTableCard = (
     <PanelCard title="components" key="components">
       <dl>
-        {Object.entries(components).map(([componentType, componentCount]) => (
+        {Object.entries(componentTable).map(([componentType, componentMap]) => (
           <React.Fragment key={componentType}>
             <dt>{componentType}</dt>
-            <dd>{componentCount}</dd>
+            <dd>{Object.keys(componentMap).length}</dd>
           </React.Fragment>
         ))}
       </dl>
@@ -63,11 +62,11 @@ export const Debug = () => {
           <PanelDrawer title={systemName} key={systemName}>
             <dl>
               {Object.entries(queryResults).map(
-                ([queryKey, queryResultCount]) => {
+                ([queryString, queryResultCount]) => {
                   return (
-                    <React.Fragment key={queryKey}>
-                      <dt>{queryKey}</dt>
-                      <dd>{queryResultCount}</dd>
+                    <React.Fragment key={queryString}>
+                      <dt>{queryString}</dt>
+                      <dd>{queryResultCount.length}</dd>
                     </React.Fragment>
                   )
                 },
@@ -79,26 +78,7 @@ export const Debug = () => {
     </PanelCard>
   )
 
-  const adminCard = (
-    <PanelCard title="admin" key="admin">
-      <select onChange={onEntityAdminSelectChange}>
-        {entityAdmins.map((_, i) => (
-          <option value={i} key={i}>
-            instance {i}
-          </option>
-        ))}
-      </select>
-    </PanelCard>
-  )
-
-  function onEntityAdminSelectChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const i = +e.target.value
-    const entityAdmin = entityAdmins[i]
-
-    setEntityAdmin(entityAdmin)
-  }
-
-  const cards = [adminCard, totalsCard, componentsCard, poolsCard, systemsCard]
+  const cards = [totalsCard, componentTableCard, poolsCard, systemsCard]
 
   return <Panel title="net-ecs tools">{cards}</Panel>
 }

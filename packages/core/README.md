@@ -57,11 +57,32 @@ const damageSystem = createSystem(
   [With(Health), With(DamageOverTimeEffect)],
 )
 
-world.addSystem(damageSystem)
-
 const entity = world.createEntity()
 
+world.addSystem(damageSystem)
 world.addComponent(entity, Health, 100)
 world.addComponent(entity, DamageOverTimeEffect, 1, 1, world.clock.time)
 world.tick(1)
+```
+
+### Singleton components
+
+```ts
+const Volume = createComponentFactory(
+  "Volume",
+  { value: 100 },
+  (obj, value: number) => {
+    obj.value = value
+  },
+)
+const volumeSystem = createSystem(
+  "volumeSystem",
+  (world, [entity]) => {
+    const volume = world.getComponent(entity, Volume)
+    // do something with volume component
+  },
+  [With(Volume)],
+)
+world.createSingletonComponent(Volume)
+world.addSystem(volumeSystem)
 ```

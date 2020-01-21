@@ -2,7 +2,7 @@ const path = require("path")
 const { addWebpackAlias, babelInclude, override } = require("customize-cra")
 const ModuleScopePlugin = require("react-dev-utils/ModuleScopePlugin")
 const resolvePackageDirectory = package =>
-  path.dirname(require.resolve(`${package}/package.json`))
+  path.dirname(require.resolve(path.join(package, "package.json")))
 const monorepoPackages = ["@net-ecs/core", "@net-ecs/debug"]
 const monorepoWebpackAliases = monorepoPackages.reduce((acc, packageName) => {
   acc[packageName] = path.join(resolvePackageDirectory(packageName), "src")

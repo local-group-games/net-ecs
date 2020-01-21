@@ -3,17 +3,21 @@ import { createComponentAdmin } from "./componentAdmin"
 import {
   debug_$entityAdminComponentAdmin,
   debug_$entityAdminEntities,
-  debug_$entityAdminSystemQueryResults,
+  debug_$entityAdminQueryState,
   debug_$entityAdminSystems,
   debug_entityAdminAdded,
-  debug_ticked,
 } from "./debug"
 import { Entity } from "./entity"
 import { Selector, SelectorType } from "./selector"
 import { System, SystemQueryResult } from "./system"
 import { Clock } from "./types/clock"
 import { GetFactoryArguments } from "./types/util"
-import { contains, mutableRemove, mutableRemoveUnordered } from "./util"
+import {
+  contains,
+  mutableRemove,
+  mutableRemoveUnordered,
+  viewEntityAdmin,
+} from "./util"
 
 enum EntityTag {
   Added,
@@ -44,12 +48,12 @@ export function createEntityAdmin(
     time: 0,
   }
 
-  const entities = new Set<Entity>()
-  const componentAdmin = createComponentAdmin(config.initialPoolSize)
   const systems: System[] = []
-  const systemQueryResults = new Map<System, SystemQueryResult>()
+  const entities: Entity[] = []
+  const componentAdmin = createComponentAdmin(config.initialPoolSize)
+  const queryState: { [systemName: string]: SystemQueryResult } = {}
   const entitiesToUpdateNextTick = new Set<Entity>()
-  const tags = {
+  const entityTags = {
     [EntityTag.Added]: new Set<Entity>(),
     [EntityTag.ComponentsChanged]: new Set<Entity>(),
     [EntityTag.Changed]: new Set<Entity>(),
@@ -66,7 +70,7 @@ export function createEntityAdmin(
     const results = system.query.map(() => [])
 
     systems.push(system)
-    systemQueryResults.set(system, results)
+    queryState[system.name] = results
 
     entities.forEach(entity => updateQueryForEntity(system, entity))
   }
@@ -76,7 +80,7 @@ export function createEntityAdmin(
       return
     }
     mutableRemove(systems, system)
-    systemQueryResults.delete(system)
+    delete queryState[system.name]
   }
 
   function hasSystem(system: System) {
@@ -86,11 +90,11 @@ export function createEntityAdmin(
   function select(selector: Selector, entity: Entity) {
     switch (selector.selectorType) {
       case SelectorType.Added:
-        return tags[EntityTag.Added].has(entity)
+        return entityTags[EntityTag.Added].has(entity)
       case SelectorType.Removed:
-        return tags[EntityTag.Deleted].has(entity)
+        return entityTags[EntityTag.Deleted].has(entity)
       case SelectorType.Changed:
-        return tags[EntityTag.Changed].has(entity)
+        return entityTags[EntityTag.Changed].has(entity)
       case SelectorType.With:
       case SelectorType.Without: {
         const components = tryGetComponent(entity, selector.componentFactory)
@@ -105,7 +109,7 @@ export function createEntityAdmin(
 
   function updateQueryForEntity(system: System, entity: Entity) {
     const { query } = system
-    const results = systemQueryResults.get(system)!
+    const results = queryState[system.name]
 
     for (let i = 0; i < query.length; i++) {
       const selectors = system.query[i]
@@ -139,30 +143,30 @@ export function createEntityAdmin(
   }
 
   function processTags() {
-    for (const entity of tags[EntityTag.Added]) {
+    for (const entity of entityTags[EntityTag.Added]) {
       updateAllQueriesForEntity(entity)
       entitiesToUpdateNextTick.add(entity)
     }
 
-    for (const entity of tags[EntityTag.Deleted]) {
+    for (const entity of entityTags[EntityTag.Deleted]) {
       componentAdmin.clearComponents(entity)
       updateAllQueriesForEntity(entity)
       entitiesToUpdateNextTick.add(entity)
     }
 
-    for (const entity of tags[EntityTag.Changed]) {
+    for (const entity of entityTags[EntityTag.Changed]) {
       updateAllQueriesForEntity(entity)
       entitiesToUpdateNextTick.add(entity)
     }
 
-    for (const entity of tags[EntityTag.ComponentsChanged]) {
+    for (const entity of entityTags[EntityTag.ComponentsChanged]) {
       updateAllQueriesForEntity(entity)
     }
 
-    tags[EntityTag.Added].clear()
-    tags[EntityTag.Deleted].clear()
-    tags[EntityTag.Changed].clear()
-    tags[EntityTag.ComponentsChanged].clear()
+    entityTags[EntityTag.Added].clear()
+    entityTags[EntityTag.Deleted].clear()
+    entityTags[EntityTag.Changed].clear()
+    entityTags[EntityTag.ComponentsChanged].clear()
   }
 
   function tick(timeStep: number) {
@@ -174,7 +178,7 @@ export function createEntityAdmin(
 
     for (let i = 0; i < systems.length; i++) {
       const system = systems[i]
-      const result = systemQueryResults.get(system)
+      const result = queryState[system.name]
 
       if (result) {
         system.update(entityAdmin, ...result)
@@ -186,24 +190,27 @@ export function createEntityAdmin(
     }
 
     entitiesToUpdateNextTick.clear()
-    debug_ticked.dispatch(entityAdmin)
   }
 
   function createEntity() {
     const entity = (entitySequence += 1)
 
-    entities.add(entity)
+    entities.push(entity)
 
-    tags[EntityTag.Added].add(entity)
+    entityTags[EntityTag.Added].add(entity)
 
     return entity
   }
 
   function destroyEntity(entity: Entity) {
-    entities.delete(entity)
+    if (!entities.includes(entity)) {
+      return
+    }
 
-    tags[EntityTag.Deleted].add(entity)
-    tags[EntityTag.Changed].delete(entity)
+    mutableRemoveUnordered(entities, entity)
+
+    entityTags[EntityTag.Deleted].add(entity)
+    entityTags[EntityTag.Changed].delete(entity)
 
     return entity
   }
@@ -213,11 +220,14 @@ export function createEntityAdmin(
     componentFactory: F,
     ...args: GetFactoryArguments<F>
   ) {
-    if (tags[EntityTag.Deleted].has(entity) || !entities.has(entity)) {
+    if (
+      entityTags[EntityTag.Deleted].has(entity) ||
+      !entities.includes(entity)
+    ) {
       return false
     }
 
-    tags[EntityTag.ComponentsChanged].add(entity)
+    entityTags[EntityTag.ComponentsChanged].add(entity)
 
     return componentAdmin.addComponent(entity, componentFactory, ...args)
   }
@@ -226,14 +236,17 @@ export function createEntityAdmin(
     entity: Entity,
     component: Component | ComponentFactory,
   ) {
-    if (tags[EntityTag.Deleted].has(entity) || !entities.has(entity)) {
+    if (
+      entityTags[EntityTag.Deleted].has(entity) ||
+      !entities.includes(entity)
+    ) {
       return false
     }
 
     const result = componentAdmin.removeComponent(entity, component)
 
     if (result) {
-      tags[EntityTag.ComponentsChanged].add(entity)
+      entityTags[EntityTag.ComponentsChanged].add(entity)
     }
 
     return result
@@ -245,7 +258,7 @@ export function createEntityAdmin(
   ) {
     const component = componentAdmin.getComponent(entity, componentFactory)
 
-    tags[EntityTag.Changed].add(entity)
+    entityTags[EntityTag.Changed].add(entity)
 
     return component
   }
@@ -281,6 +294,10 @@ export function createEntityAdmin(
     addComponent(entity, componentFactory, ...args)
   }
 
+  function view() {
+    return viewEntityAdmin(entityAdmin)
+  }
+
   const entityAdmin = {
     addSystem,
     removeSystem,
@@ -297,10 +314,11 @@ export function createEntityAdmin(
     tryGetMutableComponent,
     createComponentInstance: componentAdmin.createComponentInstance,
     createSingletonComponent,
+    view,
     // debug
     [debug_$entityAdminEntities]: entities,
     [debug_$entityAdminSystems]: systems,
-    [debug_$entityAdminSystemQueryResults]: systemQueryResults,
+    [debug_$entityAdminQueryState]: queryState,
     [debug_$entityAdminComponentAdmin]: componentAdmin,
   }
 

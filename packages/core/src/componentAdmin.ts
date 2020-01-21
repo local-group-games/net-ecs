@@ -153,3 +153,5 @@ export function createComponentAdmin(initialPoolSize: number) {
     [debug_$componentAdminComponentPools]: componentPools,
   }
 }
+
+export type ComponentAdmin = ReturnType<typeof createComponentAdmin>
