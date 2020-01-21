@@ -11,25 +11,11 @@ import React, {
   useState,
 } from "react"
 
-type EntityAdminStats = {
-  entities: number[]
-  components: { [componentType: string]: number }
-  pools: { [componentType: string]: number }
-  systems: { [systemName: string]: { [queryString: string]: number } }
-}
-
-type EntityAdminDetails = {
-  entityAdmin: EntityAdmin
-  stats: EntityAdminStats
-}
-
 type NetEcsContext = {
-  view: EntityAdminView | undefined
+  view?: EntityAdminView
 }
 
-const netEcsContext = createContext<NetEcsContext>({
-  view: undefined,
-})
+const netEcsContext = createContext<NetEcsContext>({})
 
 type NetEcsProviderProps = PropsWithChildren<{
   target?: string | EntityAdmin
