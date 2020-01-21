@@ -28,4 +28,13 @@ export class Signal<T = any> {
 
     this.subscribers.splice(index, 1)
   }
+
+  once(subscriber: SignalSubscriber<T>) {
+    const onceSubscriber = (t: T) => {
+      subscriber(t)
+      this.unsubscribe(onceSubscriber)
+    }
+
+    this.subscribe(onceSubscriber)
+  }
 }
