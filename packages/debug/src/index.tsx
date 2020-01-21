@@ -8,6 +8,8 @@ type AppProps = {
   target?: string | EntityAdmin
 }
 
+const defaultProps: AppProps = {}
+
 function App(props: AppProps) {
   return (
     <NetEcsProvider target={props.target}>
@@ -16,6 +18,6 @@ function App(props: AppProps) {
   )
 }
 
-export function mount(el: HTMLElement, options: AppProps) {
+export function mount(el: HTMLElement, options: AppProps = defaultProps) {
   render(<App {...options} />, el)
 }

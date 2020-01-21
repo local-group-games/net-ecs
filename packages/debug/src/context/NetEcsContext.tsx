@@ -41,7 +41,7 @@ export const NetEcsProvider = (props: NetEcsProviderProps) => {
     } else if (props.target) {
       listen(props.target)
     } else {
-      debug_entityAdminAdded.subscribe(listen)
+      debug_entityAdminAdded.once(listen)
       _unsub = () => debug_entityAdminAdded.unsubscribe(listen)
     }
 
