@@ -1,5 +1,5 @@
 import { Entity } from "./entity"
-import { EntityAdmin } from "./entityAdmin"
+import { EntityAdmin } from "./entity_admin"
 import { Selector } from "./selector"
 
 export type SystemQuery = Selector[][]

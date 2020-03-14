@@ -1,0 +1,21 @@
+{
+  "name": "@net-ecs/example-server",
+  "version": "1.0.0",
+  "main": "lib/index.js",
+  "types": "src/index.ts",
+  "license": "MIT",
+  "scripts": {
+    "start": "node bin/start.js",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@net-ecs/core": "^0.0.0",
+    "@net-ecs/server": "^0.0.0",
+    "@types/victor": "^1.1.0",
+    "dotenv": "^8.2.0",
+    "victor": "^1.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^13.9.8"
+  }
+}

@@ -17,8 +17,8 @@ const PanelContent = styled.div`
 `
 
 const PanelWrapper = styled.section`
-  font-size: 11px;
-  font-family: monospace;
+  font-size: 12px;
+  font-family: "Iosevka", monospace;
   background-color: #1f2527;
   color: #9da9b1;
   height: 100%;
@@ -62,9 +62,7 @@ const PanelWrapper = styled.section`
   }
 `
 
-export function Panel(
-  props: ComponentProps<typeof PanelWrapper> & { title: string },
-) {
+export function Panel(props: ComponentProps<typeof PanelWrapper> & { title: string }) {
   return (
     <PanelWrapper>
       <PanelTitle>{props.title}</PanelTitle>
