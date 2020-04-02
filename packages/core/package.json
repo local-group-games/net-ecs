@@ -20,5 +20,8 @@
   "scripts": {
     "test": "echo \"Error: run tests from root\" && exit 1",
     "build": "tsc"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^1.12.0"
   }
 }

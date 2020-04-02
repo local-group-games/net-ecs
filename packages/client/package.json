@@ -1,0 +1,38 @@
+{
+  "name": "@net-ecs/client",
+  "version": "0.0.0",
+  "description": "> TODO: description",
+  "author": "Eric McDaniel <eric.g.mcdaniel@gmail.com>",
+  "homepage": "",
+  "license": "ISC",
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "directories": {
+    "src": "src"
+  },
+  "files": [
+    "src"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@net-ecs/core": "^0.0.0",
+    "@web-udp/client": "^3.4.0"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

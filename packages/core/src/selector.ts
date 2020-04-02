@@ -8,19 +8,23 @@ export enum SelectorType {
   Changed,
 }
 
-export type Selector<
-  T extends SelectorType = SelectorType,
-  F extends ComponentFactory = ComponentFactory
-> = {
-  selectorType: T
-  componentFactory: F
+export type Selector = {
+  selectorType: SelectorType
+  componentType: string
 }
 
-function createSelector<T extends SelectorType, F extends ComponentFactory>(
-  selectorType: T,
-) {
-  return (componentFactory: F) =>
-    ({ selectorType, componentFactory } as Selector<T, F>)
+function createSelector(selectorType: SelectorType) {
+  return (factory?: ComponentFactory | string) => {
+    const selector = {
+      selectorType,
+    } as Selector
+
+    if (factory) {
+      selector.componentType = typeof factory === "string" ? factory : factory.type
+    }
+
+    return selector
+  }
 }
 
 export const Without = createSelector(SelectorType.Without)

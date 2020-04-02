@@ -1,15 +1,5 @@
-import {
-  debug_entityAdminAdded,
-  EntityAdmin,
-  EntityAdminView,
-} from "@net-ecs/core"
-import React, {
-  createContext,
-  PropsWithChildren,
-  useContext,
-  useEffect,
-  useState,
-} from "react"
+import { INTERNAL_entityAdminAdded, EntityAdmin, EntityAdminView } from "@net-ecs/core"
+import React, { createContext, PropsWithChildren, useContext, useEffect, useState } from "react"
 
 type NetEcsContext = {
   view?: EntityAdminView
@@ -41,8 +31,8 @@ export const NetEcsProvider = (props: NetEcsProviderProps) => {
     } else if (props.target) {
       listen(props.target)
     } else {
-      debug_entityAdminAdded.once(listen)
-      _unsub = () => debug_entityAdminAdded.unsubscribe(listen)
+      INTERNAL_entityAdminAdded.once(listen)
+      _unsub = () => INTERNAL_entityAdminAdded.unsubscribe(listen)
     }
 
     return () => _unsub()
@@ -52,11 +42,7 @@ export const NetEcsProvider = (props: NetEcsProviderProps) => {
     view,
   }
 
-  return (
-    <netEcsContext.Provider value={api}>
-      {props.children}
-    </netEcsContext.Provider>
-  )
+  return <netEcsContext.Provider value={api}>{props.children}</netEcsContext.Provider>
 }
 
 export function useNetECS() {

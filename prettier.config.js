@@ -1,9 +1,10 @@
 module.exports = {
+  parser: "typescript",
   arrowParens: "avoid",
   bracketSpacing: true,
   insertPragma: false,
   jsxBracketSameLine: false,
-  printWidth: 80,
+  printWidth: 100,
   proseWrap: "preserve",
   requirePragma: false,
   semi: false,

@@ -1,0 +1,23 @@
+{
+  "name": "@net-ecs/server",
+  "version": "0.0.0",
+  "description": "> TODO: description",
+  "author": "Eric McDaniel <eric.g.mcdaniel@gmail.com>",
+  "homepage": "",
+  "license": "ISC",
+  "main": "lib/index.js",
+  "types": "src/index.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@net-ecs/core": "^0.0.0",
+    "@web-udp/server": "^3.2.4"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^13.9.8"
+  }
+}

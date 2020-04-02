@@ -4,12 +4,17 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
-  "devDependencies": {},
+  "devDependencies": {
+    "@types/node": "^13.9.8"
+  },
   "dependencies": {
     "lerna": "^3.20.2",
-    "typescript": "^3.7.4"
+    "typescript": "^3.8.3"
   },
   "scripts": {
-    "example": "lerna run start --scope=@net-ecs/example --stream"
+    "example:build": "lerna run build --ignore=@net-ecs/example-client",
+    "example:client": "npm run start --prefix ./example/client",
+    "example:server": "npm run start --prefix ./example/server",
+    "postinstall": "lerna bootstrap"
   }
 }
