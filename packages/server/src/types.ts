@@ -20,7 +20,7 @@ export type NetEcsServerClient = {
 
 export type NetEcsServerNetworkOptions = {
   priorities: PriorityConfig
-  updateSize: number
+  unreliableUpdateSize: number
   unreliableSendRate: number
 }
 

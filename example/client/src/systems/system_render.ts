@@ -2,7 +2,7 @@ import { createSystem, With } from "@net-ecs/core"
 import { Velocity } from "@net-ecs/example-server"
 import Victor from "victor"
 import { Color } from "../components"
-import { PositionBuffer } from "../components/component_position_buffer"
+import { PredictionBuffer } from "../components/component_prediction_buffer"
 import { app, framerate, graphics } from "../graphics"
 
 const renderVelocity = new Victor(0, 0)
@@ -31,7 +31,7 @@ export const render = createSystem(
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
       const velocity = world.getComponent(entity, Velocity)
-      const { x, y } = world.getComponent(entity, PositionBuffer)
+      const { x, y } = world.getComponent(entity, PredictionBuffer)
 
       graphics.lineStyle(1, color32)
       graphics.drawCircle(x, y, 4)
@@ -47,5 +47,5 @@ export const render = createSystem(
     }
   },
   [With(Color)],
-  [With(PositionBuffer), With(Velocity)],
+  [With(PredictionBuffer), With(Velocity)],
 )

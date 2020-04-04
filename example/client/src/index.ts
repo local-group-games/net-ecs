@@ -4,8 +4,8 @@ import { Boid, Neighbors, Transform, Velocity } from "@net-ecs/example-server"
 import { Color } from "./components"
 import { app } from "./graphics"
 import { colorTransition, render } from "./systems"
-import { PositionBuffer } from "./components/component_position_buffer"
-import { transformEasing } from "./systems/system_transform_easing"
+import { PredictionBuffer } from "./components/component_prediction_buffer"
+import { prediction } from "./systems/system_prediction"
 
 mount(document.getElementById("ui")!)
 
@@ -17,13 +17,13 @@ async function main() {
   client.world.registerComponentFactory(Neighbors)
   client.world.registerComponentFactory(Transform)
   client.world.registerComponentFactory(Velocity)
-  client.world.registerComponentFactory(PositionBuffer)
+  client.world.registerComponentFactory(PredictionBuffer)
 
   client.world.createSingletonComponent(Color)
 
   client.world.addSystem(render)
   client.world.addSystem(colorTransition)
-  client.world.addSystem(transformEasing)
+  client.world.addSystem(prediction)
 
   app.ticker.add(() => client.world.tick(app.ticker.deltaMS / 1000))
   ;(window as any).world = client.world

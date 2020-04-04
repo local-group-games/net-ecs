@@ -100,7 +100,7 @@ export function createNetworkSystem(
       for (const update of priorityAccumulator) {
         updateUnreliable.push(update)
 
-        if (updateUnreliable.length >= options.updateSize) {
+        if (updateUnreliable.length >= options.unreliableUpdateSize) {
           break
         }
       }

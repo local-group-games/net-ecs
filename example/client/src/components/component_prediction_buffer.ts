@@ -6,10 +6,9 @@ const schema = {
   updates: [] as [number, number, number][],
 }
 
-export const PositionBuffer = createComponentFactory(
+export const PredictionBuffer = createComponentFactory(
   "position_buffer",
   schema,
-  // TODO: This is a really nasty API lol.
   (buffer, x = buffer.x, y = buffer.y) => {
     buffer.updates = []
     buffer.x = x

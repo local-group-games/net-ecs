@@ -21,7 +21,7 @@ export function createNetEcsExampleServer() {
         },
       },
       unreliableSendRate: (1 / 20) * 1000,
-      updateSize: 1000,
+      unreliableUpdateSize: 1000,
     },
   })
 
@@ -60,13 +60,13 @@ export function createNetEcsExampleServer() {
 
   setInterval(() => server.world.tick((1 / 60) * 1000), (1 / 60) * 1000)
 
-  // setInterval(() => {
-  //   if (Math.random() > 0.5) {
-  //     addBoid()
-  //   } else {
-  //     removeBoid()
-  //   }
-  // }, 2000)
+  setInterval(() => {
+    if (Math.random() > 0.5) {
+      for (let i = 0; i < 10; i++) addBoid()
+    } else {
+      for (let i = 0; i < 10; i++) removeBoid()
+    }
+  }, 2000)
 
   return server
 }
