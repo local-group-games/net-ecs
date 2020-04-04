@@ -5,10 +5,8 @@ import {
   decode,
   Entity,
   MessageType,
-  pipe,
 } from "@net-ecs/core"
 import { Client, Connection } from "@web-udp/client"
-import { Signal } from "@web-udp/protocol"
 import { SESSION_ID } from "./const"
 import { ComponentUpdater } from "./types"
 
@@ -30,23 +28,16 @@ export function createNetEcsClient(
 
   let reliable: Connection | null = null
   let unreliable: Connection | null = null
-  let messages = new Signal<AnyMessage>()
 
-  function handleStateUpdate(update: Component[]) {
-    for (let i = 0; i < update.length; i++) {
-      const remoteComponent = update[i]
-      const remoteEntity = remoteComponent.entity
+  function handleStateUpdate(changed: Component[]) {
+    for (let i = 0; i < changed.length; i++) {
+      const remoteComponent = changed[i]
       const updater = updaters[remoteComponent.type] || merge
+      const localEntity = remoteToLocal.get(remoteComponent.entity)
 
-      let localEntity = remoteToLocal.get(remoteComponent.entity)
-
-      if (!localEntity) {
-        localEntity = world.createEntity()
-        remoteToLocal.set(remoteEntity, localEntity)
-      }
-
+      // May have not recieved an EntityCreatedMessage yet.
       if (localEntity) {
-        const localComponent = world.tryGetMutableComponent(localEntity, remoteComponent.type)
+        const localComponent = world.tryGetMutableComponentByType(localEntity, remoteComponent.type)
 
         if (localComponent) {
           updater(localComponent, remoteComponent)
@@ -57,9 +48,18 @@ export function createNetEcsClient(
     }
   }
 
-  function handleEntitiesRemoved(entities: Entity[]) {
+  function handleEntitiesCreated(entities: ReadonlyArray<Entity>) {
     for (let i = 0; i < entities.length; i++) {
       const remoteEntity = entities[i]
+      const localEntity = world.createEntity()
+
+      remoteToLocal.set(remoteEntity, localEntity)
+    }
+  }
+
+  function handleEntitiesDestroyed(removed: ReadonlyArray<Entity>) {
+    for (let i = 0; i < removed.length; i++) {
+      const remoteEntity = removed[i]
       const localEntity = remoteToLocal.get(remoteEntity)
 
       if (!localEntity) {
@@ -79,15 +79,18 @@ export function createNetEcsClient(
     }
   }
 
-  function onMessage(data: ArrayBuffer) {
+  function onMessage(data: ArrayBuffer, source: Connection) {
     const message = decode(data) as AnyMessage
 
     switch (message[0]) {
       case MessageType.StateUpdate:
         handleStateUpdate(message[1])
         break
-      case MessageType.EntitiesRemoved:
-        handleEntitiesRemoved(message[1])
+      case MessageType.EntitiesCreated:
+        handleEntitiesCreated(message[1])
+        break
+      case MessageType.EntitiesDestroyed:
+        handleEntitiesDestroyed(message[1])
         break
       case MessageType.ComponentRemoved:
         // handleComponentRemoved(...message[1])
@@ -120,8 +123,8 @@ export function createNetEcsClient(
       metadata: { sessionId, reliable: false },
     })
 
-    reliable.messages.subscribe(onMessage)
-    unreliable.messages.subscribe(onMessage)
+    reliable.messages.subscribe(message => onMessage(message, reliable))
+    unreliable.messages.subscribe(message => onMessage(message, unreliable))
 
     reliable.closed.subscribe(destroy)
     unreliable.closed.subscribe(destroy)

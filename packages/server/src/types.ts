@@ -15,6 +15,7 @@ export type NetEcsServerClient = {
   sessionId: string
   reliable: Connection | null
   unreliable: Connection | null
+  initialized: boolean
 }
 
 export type NetEcsServerNetworkOptions = {

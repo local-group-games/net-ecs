@@ -7,7 +7,7 @@ const schema = {
 }
 
 export const Color = createComponentFactory(
-  "Color",
+  "color",
   schema,
   (color, red: number = schema.red, green: number = schema.green, blue: number = schema.blue) => {
     color.red = red

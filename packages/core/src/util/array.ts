@@ -27,6 +27,6 @@ export function mutableRemove<T>(arr: T[], element: T) {
   return true
 }
 
-export function contains<T>(arr: T[], element: T) {
-  return arr.indexOf(element) > -1
+export function mutableEmpty(arr: any[]) {
+  while (arr.length > 0) arr.pop()
 }

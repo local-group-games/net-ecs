@@ -6,7 +6,7 @@ const schema = {
 }
 
 export const Transform = createComponentFactory(
-  "Transform",
+  "transform",
   schema,
   (transform, x: number = transform.x, y: number = transform.y) => {
     transform.x = x

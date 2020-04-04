@@ -119,7 +119,7 @@ export function createComponentAdmin(initialPoolSize: number) {
   ) {
     const component = createComponentInstance(factory, ...args)
 
-    return insertComponent(entity, component)
+    return insertComponent(entity, component) as Component
   }
 
   /**
@@ -143,7 +143,7 @@ export function createComponentAdmin(initialPoolSize: number) {
 
     componentsOfType[entity] = component as PublicComponent
 
-    return true
+    return component
   }
 
   /**
@@ -176,14 +176,30 @@ export function createComponentAdmin(initialPoolSize: number) {
    * @param entity Entity of the lookup.
    * @param type Component type to find.
    */
-  function getComponent<F extends ComponentFactory>(entity: number, type: F["type"]) {
-    const component = getComponentsOfType(type)[entity]
+  function getComponent<F extends ComponentFactory>(entity: number, factory: F): ComponentOf<F> {
+    const component = getComponentsOfType(factory.type)[entity]
 
     if (!component) {
       throw componentDoesNotExistError
     }
 
     return component as ComponentOf<F>
+  }
+
+  /**
+   * Get the component instance associated with a entity for a given component type.
+   *
+   * @param entity Entity of the lookup.
+   * @param type Component type to find.
+   */
+  function getComponentByType(entity: number, type: string): Component {
+    const component = getComponentsOfType(type)[entity]
+
+    if (!component) {
+      throw componentDoesNotExistError
+    }
+
+    return component
   }
 
   return {
@@ -194,6 +210,7 @@ export function createComponentAdmin(initialPoolSize: number) {
     insertComponent,
     removeComponent,
     getComponent,
+    getComponentByType,
     // internal
     [INTERNAL_$componentAdminComponentTable]: componentTable,
     [INTERNAL_$componentAdminComponentPools]: componentPools,

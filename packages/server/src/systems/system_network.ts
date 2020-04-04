@@ -5,73 +5,113 @@ import {
   Entity,
   EntityAdmin,
   protocol,
-  Removed,
+  Destroyed,
+  mutableEmpty,
+  Created,
 } from "@net-ecs/core"
 import { createPriorityAccumulator } from "../priority_accumulator"
 import { NetEcsServerClient, NetEcsServerNetworkOptions } from "../types"
+import { NetEcsClientAdmin } from "../client_admin"
 
 export function createNetworkSystem(
   world: EntityAdmin,
-  clients: NetEcsServerClient[],
+  clients: NetEcsClientAdmin,
   options: NetEcsServerNetworkOptions,
 ) {
-  const priorityAccumulator = createPriorityAccumulator(world, options.priorities)
-  const networkSystem = createSystem(
+  const networkedComponentTypes = Object.keys(options.priorities)
+  const priorityAccumulator = createPriorityAccumulator(options.priorities)
+  const network = createSystem(
     "network",
-    (world, removed, changed) => {
-      sendRemoved(removed)
-      sendUpdated(changed)
+    (world, created, changed, destroyed) => {
+      for (const client of clients) {
+        if (!client.initialized && client.reliable) {
+          client.initialized = true
+          client.reliable.send(protocol.entitiesCreated(world.entities))
+        }
+      }
+
+      sendCreated(created)
+      sendChanged(changed)
+      sendDestroyed(destroyed)
     },
-    [Removed()],
+    [Created()],
     [Changed()],
+    [Destroyed()],
   )
+  const updateReliable: Component[] = []
+  const updateUnreliable: Component[] = []
 
   let lastUnreliableUpdateTime = 0
 
-  function sendRemoved(removed: Entity[]) {
-    if (removed.length === 0) {
+  function sendCreated(created: Entity[]) {
+    if (created.length === 0) {
       return
     }
 
-    const packet = protocol.entitiesRemoved(removed)
+    const packet = protocol.entitiesCreated(created)
 
-    for (let i = 0; i < clients.length; i++) {
-      clients[i].reliable?.send(packet)
+    for (const client of clients) {
+      client.reliable?.send(packet)
     }
   }
 
-  function sendUpdated(updated: Entity[]) {
+  function sendDestroyed(destroyed: Entity[]) {
+    if (destroyed.length === 0) {
+      return
+    }
+
+    const packet = protocol.entitiesDestroyed(destroyed)
+
+    for (const client of clients) {
+      client.reliable?.send(packet)
+    }
+  }
+
+  function sendChanged(updated: Entity[]) {
+    // No-op if no entities were updated this tick.
     if (updated.length === 0) {
       return
     }
 
     const time = Date.now()
-    const componentsReliable: Component[] = []
-    const componentsUnreliable: Component[] = []
 
-    for (const update of priorityAccumulator.update(updated)) {
-      const config = options.priorities[update.type]
+    for (let i = 0; i < updated.length; i++) {
+      const entity = updated[i]
 
-      if (config) {
-        const target = config.unreliable ? componentsUnreliable : componentsReliable
+      for (let j = 0; j < networkedComponentTypes.length; j++) {
+        const componentType = networkedComponentTypes[j]
+        const config = options.priorities[componentType]
+        const component = world.getComponentByType(entity, componentType)
 
-        target.push(update)
+        if (!world.isChangedComponent(component)) {
+          continue
+        }
 
-        if (target.length >= options.updateSize) {
+        if (config.unreliable) {
+          priorityAccumulator.update(component)
+        } else {
+          updateReliable.push(component)
+        }
+      }
+    }
+    const eligibleForUnreliable = time - lastUnreliableUpdateTime >= options.unreliableSendRate
+
+    if (eligibleForUnreliable) {
+      for (const update of priorityAccumulator) {
+        updateUnreliable.push(update)
+
+        if (updateUnreliable.length >= options.updateSize) {
           break
         }
       }
     }
 
-    const packetReliable =
-      componentsReliable.length > 0 ? protocol.stateUpdate(componentsReliable) : null
-    const packetUnreliable =
-      componentsUnreliable.length > 0 ? protocol.stateUpdate(componentsUnreliable) : null
+    priorityAccumulator.reset()
 
-    for (let i = 0; i < clients.length; i++) {
-      const client = clients[i]
-      const eligibleForUnreliable = time - lastUnreliableUpdateTime >= options.unreliableSendRate
+    const packetReliable = updateReliable.length ? protocol.stateUpdate(updateReliable) : null
+    const packetUnreliable = updateUnreliable.length ? protocol.stateUpdate(updateUnreliable) : null
 
+    for (const client of clients) {
       if (packetReliable) {
         client.reliable?.send(packetReliable)
       }
@@ -81,7 +121,10 @@ export function createNetworkSystem(
         lastUnreliableUpdateTime = time
       }
     }
+
+    mutableEmpty(updateReliable)
+    mutableEmpty(updateUnreliable)
   }
 
-  return networkSystem
+  return network
 }

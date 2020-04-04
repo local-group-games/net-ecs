@@ -1,7 +1,8 @@
 import { createSystem, With } from "@net-ecs/core"
-import { Transform, Velocity } from "@net-ecs/example-server"
+import { Velocity } from "@net-ecs/example-server"
 import Victor from "victor"
 import { Color } from "../components"
+import { PositionBuffer } from "../components/component_position_buffer"
 import { app, framerate, graphics } from "../graphics"
 
 const renderVelocity = new Victor(0, 0)
@@ -15,8 +16,8 @@ function fromRGBto32(red: number, green: number, blue: number) {
   )
 }
 
-export const renderSystem = createSystem(
-  "renderSystem",
+export const render = createSystem(
+  "render",
   (world, [color], entities) => {
     const { red, green, blue } = world.getComponent(color, Color)
     const color32 = fromRGBto32(red, green, blue)
@@ -30,10 +31,10 @@ export const renderSystem = createSystem(
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
       const velocity = world.getComponent(entity, Velocity)
-      const position = world.getComponent(entity, Transform)
+      const { x, y } = world.getComponent(entity, PositionBuffer)
 
       graphics.lineStyle(1, color32)
-      graphics.drawCircle(position.x, position.y, 4)
+      graphics.drawCircle(x, y, 4)
 
       renderVelocity.x = velocity.x
       renderVelocity.y = velocity.y
@@ -41,10 +42,10 @@ export const renderSystem = createSystem(
       renderVelocity.multiplyScalar(10)
 
       graphics.lineStyle(1, color32, 1)
-      graphics.moveTo(position.x, position.y)
-      graphics.lineTo(position.x + renderVelocity.x, position.y + renderVelocity.y)
+      graphics.moveTo(x, y)
+      graphics.lineTo(x + renderVelocity.x, y + renderVelocity.y)
     }
   },
   [With(Color)],
-  [With(Transform), With(Velocity)],
+  [With(PositionBuffer), With(Velocity)],
 )

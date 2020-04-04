@@ -1,1 +1,1 @@
-export * from "./Color"
+export * from "./component_color"

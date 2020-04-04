@@ -5,25 +5,33 @@ import { Arguments } from "../types/util"
 import { pipe } from "../util/fp"
 
 export enum MessageType {
-  // unreliable/unordered
   StateUpdate,
-  // reliable/ordered
-  EntitiesRemoved,
+  EntitiesCreated,
+  EntitiesDestroyed,
   ComponentRemoved,
 }
 
 export type Message<T extends MessageType, P> = [T, P]
 
 export type StateUpdateMessage = Message<MessageType.StateUpdate, Component[]>
-export type EntitiesRemovedMessage = Message<MessageType.EntitiesRemoved, Entity[]>
+export type EntitiesCreatedMessage = Message<MessageType.EntitiesCreated, ReadonlyArray<Entity>>
+export type EntitiesDestroyedMessage = Message<MessageType.EntitiesDestroyed, ReadonlyArray<Entity>>
 export type ComponentRemovedMessage = Message<MessageType.ComponentRemoved, (Entity | string)[]>
 
-export type AnyMessage = StateUpdateMessage | EntitiesRemovedMessage | ComponentRemovedMessage
+export type AnyMessage =
+  | StateUpdateMessage
+  | EntitiesCreatedMessage
+  | EntitiesDestroyedMessage
+  | ComponentRemovedMessage
 
 const helpers = {
   stateUpdate: (payload: Component[]): StateUpdateMessage => [MessageType.StateUpdate, payload],
-  entitiesRemoved: (payload: Entity[]): EntitiesRemovedMessage => [
-    MessageType.EntitiesRemoved,
+  entitiesCreated: (payload: ReadonlyArray<Entity>): EntitiesCreatedMessage => [
+    MessageType.EntitiesCreated,
+    payload,
+  ],
+  entitiesDestroyed: (payload: ReadonlyArray<Entity>): EntitiesDestroyedMessage => [
+    MessageType.EntitiesDestroyed,
     payload,
   ],
   componentRemoved: (payload: (Entity | string)[]): ComponentRemovedMessage => [

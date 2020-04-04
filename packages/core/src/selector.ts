@@ -3,9 +3,10 @@ import { ComponentFactory } from "./component"
 export enum SelectorType {
   Without,
   With,
-  Added,
-  Removed,
+  Created,
+  Destroyed,
   Changed,
+  ComponentsChanged,
 }
 
 export type Selector = {
@@ -29,6 +30,7 @@ function createSelector(selectorType: SelectorType) {
 
 export const Without = createSelector(SelectorType.Without)
 export const With = createSelector(SelectorType.With)
-export const Added = createSelector(SelectorType.Added)
-export const Removed = createSelector(SelectorType.Removed)
+export const Created = createSelector(SelectorType.Created)
+export const Destroyed = createSelector(SelectorType.Destroyed)
 export const Changed = createSelector(SelectorType.Changed)
+export const ComponentsChanged = createSelector(SelectorType.Changed)

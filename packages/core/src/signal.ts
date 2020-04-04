@@ -12,7 +12,7 @@ export class Signal<T = any, T2 = void> {
   }
 
   subscribe(subscriber: SignalSubscriber<T>) {
-    if (this.subscribers.indexOf(subscriber) > -1) {
+    if (this.subscribers.includes(subscriber)) {
       return
     }
 

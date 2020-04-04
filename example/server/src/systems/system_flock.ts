@@ -13,8 +13,8 @@ const normalizedVelocity = new Victor(0, 0)
 
 const sum = { x: 0, y: 0 }
 
-export const boidSystem = createSystem(
-  "boidSystem",
+export const flock = createSystem(
+  "flock",
   (world, entities) => {
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]

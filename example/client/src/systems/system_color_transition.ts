@@ -16,8 +16,8 @@ function transition(color: ComponentOf<typeof Color>) {
   }
 }
 
-export const colorTransitionSystem = createSystem(
-  "colorTransitionSystem",
+export const colorTransition = createSystem(
+  "color_transition",
   (world, [color]) => transition(world.getMutableComponent(color, Color)),
   [With(Color)],
 )

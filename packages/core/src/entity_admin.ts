@@ -3,13 +3,12 @@ import { createComponentAdmin } from "./component_admin"
 import { Entity } from "./entity"
 import * as Internal from "./internal"
 import { Selector, SelectorType } from "./selector"
-import { Signal } from "./signal"
 import { System, SystemQueryResult } from "./system"
 import { Clock } from "./types/clock"
 import { FactoryArgs } from "./types/util"
 import {
-  contains,
   getComponentType,
+  mutableEmpty,
   mutableRemove,
   mutableRemoveUnordered,
   viewEntityAdmin,
@@ -27,15 +26,85 @@ const defaultOptions: EntityAdminConfig = {
   initialPoolSize: 500,
 }
 
-enum EntityTag {
-  Added,
-  Deleted,
+enum ComponentTag {
   Changed,
-  ComponentsChanged,
 }
 
 const systemNotRegisteredError = new Error("System has not been registered.")
 const systemAlreadyRegisteredError = new Error("System was already registered.")
+
+function createTagAdmin() {
+  const tags = {
+    [SelectorType.Created]: new Set<Entity>(),
+    [SelectorType.ComponentsChanged]: new Set<Entity>(),
+    [SelectorType.Changed]: new Set<Entity>(),
+    [SelectorType.Destroyed]: new Set<Entity>(),
+  }
+  const tagsByEntity = new Map<Entity, SelectorType>()
+  const changed = new Set<Entity>()
+
+  function get(entity: Entity): SelectorType | null {
+    return tagsByEntity.get(entity)
+  }
+
+  function set(entity: Entity, tag: SelectorType) {
+    const currentTag = tagsByEntity.get(entity)
+
+    if (currentTag) {
+      tags[currentTag].delete(entity)
+    }
+
+    tags[tag].add(entity)
+    tagsByEntity.set(entity, tag)
+    changed.add(entity)
+  }
+
+  function setIfNoTag(entity: Entity, tag: SelectorType) {
+    if (has(entity)) {
+      return false
+    }
+
+    set(entity, tag)
+
+    return true
+  }
+
+  function has(entity: Entity, tag?: SelectorType) {
+    const currentTag = get(entity)
+    return typeof tag === "number" ? currentTag === tag : Boolean(currentTag)
+  }
+
+  function remove(entity: Entity) {
+    const tag = tagsByEntity.get(entity)
+
+    if (!tag) {
+      return
+    }
+
+    tags[tag].delete(entity)
+    tagsByEntity.delete(entity)
+  }
+
+  function reset() {
+    tags[SelectorType.Created].clear()
+    tags[SelectorType.Destroyed].clear()
+    tags[SelectorType.Changed].clear()
+    tags[SelectorType.ComponentsChanged].clear()
+    tagsByEntity.clear()
+    changed.clear()
+  }
+
+  return {
+    ...(tags as { [K in keyof typeof tags]: ReadonlySet<Entity> }),
+    get,
+    set,
+    setIfNoTag,
+    has,
+    remove,
+    reset,
+    changed: changed as ReadonlySet<Entity>,
+  }
+}
 
 export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) {
   const config: EntityAdminConfig = Object.assign({}, defaultOptions, options)
@@ -45,17 +114,16 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     time: 0,
   }
 
-  const ticked = new Signal<number, number>()
   const systems: System[] = []
   const entities: Entity[] = []
-  const componentAdmin = createComponentAdmin(config.initialPoolSize)
-  const queryState: { [systemName: string]: SystemQueryResult } = {}
-  const entitiesByTag = {
-    [EntityTag.Added]: new Set<Entity>(),
-    [EntityTag.ComponentsChanged]: new Set<Entity>(),
-    [EntityTag.Changed]: new Set<Entity>(),
-    [EntityTag.Deleted]: new Set<Entity>(),
+  const components = createComponentAdmin(config.initialPoolSize)
+  const queries: { [systemName: string]: SystemQueryResult } = {}
+  const tags = createTagAdmin()
+  const componentsByTag = {
+    [ComponentTag.Changed]: new Set<Component>(),
   }
+  const touchedEntities: Entity[] = []
+  const touchedComponents: Component[] = []
 
   let entitySequence = 0
 
@@ -66,7 +134,7 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
 
     systems.push(system)
     // Initialize a set of empty results for each query.
-    queryState[system.name] = system.query.map(() => [])
+    queries[system.name] = system.query.map(() => [])
 
     // Update the system query.
     entities.forEach(entity => updateQueryForEntity(system, entity))
@@ -78,45 +146,47 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     }
 
     mutableRemove(systems, system)
-    delete queryState[system.name]
+    delete queries[system.name]
   }
 
   function isSystemRegistered(system: System) {
-    return systems.indexOf(system) > -1
+    return systems.includes(system)
   }
 
   function select(selector: Selector, entity: Entity) {
     let componentCheckPassed = true
+    let component: Component
 
     if (selector.componentType) {
-      const components = tryGetComponent(entity, selector.componentType)
-      componentCheckPassed = components !== null && components !== undefined
+      component = tryGetComponentByType(entity, selector.componentType)
+      componentCheckPassed = component !== null && component !== undefined
     }
 
     if (!componentCheckPassed) {
       return selector.selectorType === SelectorType.Without
     }
 
-    switch (selector.selectorType) {
-      case SelectorType.With:
-        return true
-      case SelectorType.Added:
-        return entitiesByTag[EntityTag.Added].has(entity)
-      case SelectorType.Removed:
-        return entitiesByTag[EntityTag.Deleted].has(entity)
-      case SelectorType.Changed:
-        return entitiesByTag[EntityTag.Changed].has(entity)
+    if (selector.selectorType === SelectorType.With) {
+      return true
     }
+
+    const x = tags.has(entity, selector.selectorType)
+
+    if (selector.selectorType === SelectorType.Changed && component) {
+      return x && isChangedComponent(component)
+    }
+
+    return x
   }
 
   function updateQueryForEntity(system: System, entity: Entity) {
     const { query } = system
-    const results = queryState[system.name]
+    const results = queries[system.name]
 
     for (let i = 0; i < query.length; i++) {
       const selectors = system.query[i]
       const selectorResults = results[i]
-      const isSelected = contains(selectorResults, entity)
+      const isSelected = selectorResults.includes(entity)
 
       let isQueryHit = true
 
@@ -148,37 +218,32 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     }
   }
 
-  function resetTags() {
-    entitiesByTag[EntityTag.Added].clear()
-    entitiesByTag[EntityTag.Deleted].clear()
-    entitiesByTag[EntityTag.Changed].clear()
-    entitiesByTag[EntityTag.ComponentsChanged].clear()
-  }
-
-  function processTags() {
-    for (const entity of entitiesByTag[EntityTag.Added]) {
-      updateAllQueriesForEntity(entity)
-    }
-
-    for (const entity of entitiesByTag[EntityTag.Deleted]) {
-      componentAdmin.removeAllComponents(entity)
-      updateAllQueriesForEntity(entity)
-    }
-
-    for (const entity of entitiesByTag[EntityTag.Changed]) {
-      updateAllQueriesForEntity(entity)
-    }
-
-    for (const entity of entitiesByTag[EntityTag.ComponentsChanged]) {
-      updateAllQueriesForEntity(entity)
-    }
-  }
-
   function tick(timeStep: number) {
-    // Update queries for all changed entities.
-    processTags()
-    // Reset changed entities for next tick.
-    resetTags()
+    // Clear touched entities.
+    mutableEmpty(touchedEntities)
+
+    // Clear touched components.
+    mutableEmpty(touchedComponents)
+
+    // Track components that were accessed in a mutable way on the previous tick.
+    for (const component of componentsByTag[ComponentTag.Changed]) {
+      touchedComponents.push(component)
+    }
+
+    componentsByTag[ComponentTag.Changed].clear()
+
+    // Release deleted entities' components before updating their queries.
+    for (const entity of tags[SelectorType.Destroyed]) {
+      components.removeAllComponents(entity)
+    }
+
+    // Update queries for changed entities and store touched entities.
+    for (const entity of tags.changed) {
+      updateAllQueriesForEntity(entity)
+      touchedEntities.push(entity)
+    }
+
+    tags.reset()
 
     // Step the clock to the next frame and update the monotonic time.
     clock.step = timeStep
@@ -188,24 +253,27 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     // Execute systems.
     for (let i = 0; i < systems.length; i++) {
       const system = systems[i]
-      const result = queryState[system.name]
+      const result = queries[system.name]
 
       if (result) {
         system.update(entityAdmin, ...result)
       }
     }
+
+    for (let i = 0; i < touchedEntities.length; i++) {
+      updateAllQueriesForEntity(touchedEntities[i])
+    }
   }
 
   function hasEntity(entity: Entity) {
-    return entities.indexOf(entity) > -1
+    return entities.includes(entity)
   }
 
   function createEntity() {
     const entity = (entitySequence += 1)
 
     entities.push(entity)
-
-    entitiesByTag[EntityTag.Added].add(entity)
+    tags.set(entity, SelectorType.Created)
 
     return entity
   }
@@ -216,9 +284,7 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     }
 
     mutableRemoveUnordered(entities, entity)
-
-    entitiesByTag[EntityTag.Deleted].add(entity)
-    entitiesByTag[EntityTag.Changed].delete(entity)
+    tags.set(entity, SelectorType.Destroyed)
 
     return entity
   }
@@ -228,52 +294,51 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     factory: F,
     ...args: FactoryArgs<F>
   ) {
-    if (entitiesByTag[EntityTag.Deleted].has(entity) || !entities.includes(entity)) {
+    if (tags.has(entity, SelectorType.Destroyed) || !entities.includes(entity)) {
       return false
     }
 
-    entitiesByTag[EntityTag.ComponentsChanged].add(entity)
+    const component = components.addComponent(entity, factory, ...args)
 
-    return componentAdmin.addComponent(entity, factory, ...args)
+    tags.setIfNoTag(entity, SelectorType.ComponentsChanged)
+
+    return component as ComponentOf<F>
   }
 
   function removeComponent(entity: Entity, identifier: ComponentFactory | Component | string) {
     const componentType = getComponentType(identifier)
 
     // No-op if the entity is being deleted.
-    if (entitiesByTag[EntityTag.Deleted].has(entity)) {
+    if (tags.has(entity, SelectorType.Destroyed)) {
       return false
     }
 
-    componentAdmin.removeComponent(entity, componentType)
-    entitiesByTag[EntityTag.ComponentsChanged].add(entity)
-  }
-
-  function getComponent<F extends ComponentFactory>(
-    entity: Entity,
-    identifier: F | string,
-  ): Readonly<ComponentOf<F>> {
-    const componentType = getComponentType(identifier)
-    const component = componentAdmin.getComponent<F>(entity, componentType)
-
-    return component
+    components.removeComponent(entity, componentType)
+    tags.setIfNoTag(entity, SelectorType.ComponentsChanged)
   }
 
   function getMutableComponent<F extends ComponentFactory>(
     entity: Entity,
-    identifier: F | string,
+    factory: F,
   ): ComponentOf<F> {
-    const component = getComponent(entity, identifier)
+    const component = components.getComponent(entity, factory)
 
-    entitiesByTag[EntityTag.Changed].add(entity)
+    tags.setIfNoTag(entity, SelectorType.Changed)
+    componentsByTag[ComponentTag.Changed].add(component)
 
     return component as ComponentOf<F>
   }
 
-  function tryGetMutableComponent<F extends ComponentFactory>(
-    entity: Entity,
-    factory: F | string,
-  ): ComponentOf<F> | null {
+  function getMutableComponentByType(entity: Entity, componentType: string) {
+    const component = components.getComponentByType(entity, componentType)
+
+    tags.setIfNoTag(entity, SelectorType.Changed)
+    componentsByTag[ComponentTag.Changed].add(component)
+
+    return component
+  }
+
+  function tryGetMutableComponent<F extends ComponentFactory>(entity: Entity, factory: F) {
     try {
       return getMutableComponent(entity, factory)
     } catch {
@@ -281,12 +346,28 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     }
   }
 
-  function tryGetComponent<F extends ComponentFactory>(
+  function tryGetMutableComponentByType<F extends ComponentFactory>(
     entity: Entity,
-    identify: F | string,
-  ): Readonly<ComponentOf<F>> | null {
+    componentType: string,
+  ) {
     try {
-      return getComponent(entity, identify)
+      return getMutableComponentByType(entity, componentType)
+    } catch {
+      return null
+    }
+  }
+
+  function tryGetComponent<F extends ComponentFactory>(entity: Entity, factory: F) {
+    try {
+      return components.getComponent(entity, factory)
+    } catch {
+      return null
+    }
+  }
+
+  function tryGetComponentByType(entity: Entity, componentType: string) {
+    try {
+      return components.getComponentByType(entity, componentType)
     } catch {
       return null
     }
@@ -299,15 +380,34 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     const entity = createEntity()
 
     addComponent(entity, factory, ...args)
+
+    return entity
+  }
+
+  function isChangedComponent(component: Component) {
+    return touchedComponents.includes(component)
   }
 
   function view() {
     return viewEntityAdmin(entityAdmin)
   }
 
-  const { createComponentInstance, insertComponent, registerComponentFactory } = componentAdmin
+  function setModified(component: Component) {
+    if (!touchedComponents.includes(component)) {
+      touchedComponents.push(component)
+    }
+  }
+
+  const {
+    getComponent,
+    getComponentByType,
+    createComponentInstance,
+    insertComponent,
+    registerComponentFactory,
+  } = components
 
   const entityAdmin = {
+    entities: entities as ReadonlyArray<Entity>,
     addSystem,
     removeSystem,
     isSystemRegistered,
@@ -320,18 +420,23 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     insertComponent,
     removeComponent,
     getComponent,
+    getComponentByType,
     getMutableComponent,
     tryGetComponent,
+    tryGetComponentByType,
     tryGetMutableComponent,
+    tryGetMutableComponentByType,
+    setModified,
     createComponentInstance,
     createSingletonComponent,
     registerComponentFactory,
     view,
+    isChangedComponent,
     // internal
     [Internal.INTERNAL_$entityAdminEntities]: entities,
     [Internal.INTERNAL_$entityAdminSystems]: systems,
-    [Internal.INTERNAL_$entityAdminQueryState]: queryState,
-    [Internal.INTERNAL_$entityAdminComponentAdmin]: componentAdmin,
+    [Internal.INTERNAL_$entityAdminQueryState]: queries,
+    [Internal.INTERNAL_$entityAdminComponentAdmin]: components,
   }
 
   Internal.INTERNAL_entityAdminAdded.dispatch(entityAdmin)

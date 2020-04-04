@@ -10,7 +10,7 @@ const schema = {
 }
 
 export const Boid = createComponentFactory(
-  "Boid",
+  "boid",
   schema,
   (
     boid,

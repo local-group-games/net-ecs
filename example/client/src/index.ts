@@ -1,20 +1,15 @@
-import { ComponentUpdater, createNetEcsClient } from "@net-ecs/client"
-import { ComponentOf } from "@net-ecs/core"
+import { createNetEcsClient } from "@net-ecs/client"
 import { mount } from "@net-ecs/debug"
 import { Boid, Neighbors, Transform, Velocity } from "@net-ecs/example-server"
 import { Color } from "./components"
 import { app } from "./graphics"
-import { colorTransitionSystem, renderSystem } from "./systems"
-import { lerp } from "@gamestdio/mathf"
+import { colorTransition, render } from "./systems"
+import { PositionBuffer } from "./components/component_position_buffer"
+import { transformEasing } from "./systems/system_transform_easing"
 
 mount(document.getElementById("ui")!)
 
-const client = createNetEcsClient("ws://localhost:9000", {
-  Transform: (local: ComponentOf<typeof Transform>, remote: ComponentOf<typeof Transform>) => {
-    local.x = lerp(local.x, remote.x, 0.5)
-    local.y = lerp(local.y, remote.y, 0.5)
-  },
-})
+const client = createNetEcsClient("ws://localhost:9000", {})
 
 async function main() {
   client.world.registerComponentFactory(Boid)
@@ -22,14 +17,17 @@ async function main() {
   client.world.registerComponentFactory(Neighbors)
   client.world.registerComponentFactory(Transform)
   client.world.registerComponentFactory(Velocity)
+  client.world.registerComponentFactory(PositionBuffer)
 
   client.world.createSingletonComponent(Color)
 
-  client.world.addSystem(renderSystem)
-  client.world.addSystem(colorTransitionSystem)
+  client.world.addSystem(render)
+  client.world.addSystem(colorTransition)
+  client.world.addSystem(transformEasing)
 
   app.ticker.add(() => client.world.tick(app.ticker.deltaMS / 1000))
   ;(window as any).world = client.world
+
   await client.initialize()
 }
 

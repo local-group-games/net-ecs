@@ -1,7 +1,7 @@
 import { createComponentFactory } from "@net-ecs/core"
 
 export const Velocity = createComponentFactory(
-  "Velocity",
+  "velocity",
   {
     x: 0,
     y: 0,

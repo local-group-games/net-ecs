@@ -6,7 +6,7 @@ const schema = {
 }
 
 export const Neighbors = createComponentFactory(
-  "Neighbors",
+  "neighbors",
   schema,
   (neighbors, near: Entity[] = neighbors.near, far: Entity[] = neighbors.far) => {
     neighbors.near = near

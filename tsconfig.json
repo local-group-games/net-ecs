@@ -3,6 +3,7 @@
     "esModuleInterop": true,
     "moduleResolution": "node",
     "target": "es2016",
+    "sourceMap": true,
     "experimentalDecorators": true,
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,

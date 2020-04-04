@@ -3,8 +3,8 @@ import { Transform, Velocity } from "../components"
 
 const SPEED = 0.1
 
-export const movingSystem = createSystem(
-  "movingSystem",
+export const movement = createSystem(
+  "movement",
   (world, entities) => {
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
