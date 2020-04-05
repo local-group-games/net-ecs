@@ -1,8 +1,8 @@
 import {
   Component,
-  ComponentFactory,
   ComponentOf,
-  AdminComponent,
+  ComponentType,
+  InternalComponent,
   PublicComponent,
 } from "./component"
 import {
@@ -10,9 +10,9 @@ import {
   INTERNAL_$componentAdminComponentTable,
 } from "./internal"
 import { createStackPool, StackPool } from "./pool/stack_pool"
-import { FactoryArgs } from "./types/util"
-import { deleteObjectProperties } from "./util"
-import { Entity } from "./entity"
+import { ComponentOfSchema, resetComponentFromSchema, Schema } from "./schema"
+import { initializeComponentFromSchema } from "./schema/schema_utils"
+import { ComponentTypeInitializerArgs } from "./types/util"
 
 export type ComponentTable = {
   [type: string]: { [entity: number]: Component }
@@ -22,7 +22,7 @@ export type ComponentPools = {
   [type: string]: StackPool<Component>
 }
 
-export const componentFactoryNotRegisteredError = new Error("Component Factory is not registered.")
+export const componentTypeNotRegistered = new Error("Component Type is not registered.")
 export const componentDoesNotExistError = new Error("Component does not exist.")
 export const entityNotRegisteredError = new Error("Entity is not registered.")
 
@@ -40,32 +40,31 @@ export function createComponentAdmin(initialPoolSize: number) {
       return components
     }
 
-    throw componentFactoryNotRegisteredError
+    throw componentTypeNotRegistered
   }
 
   /**
-   * Registers a component factory with the ComponentAdmin. Creates an object pool for the
+   * Registers a component type with the ComponentAdmin. Creates an object pool for the
    * component type and initializes a new component instance map in the componentTable.
    *
-   * @param factory Component factory to register.
+   * @param type Component type to register.
    */
-  function registerComponentFactory(factory: ComponentFactory) {
-    const { type, schema } = factory
-    const reset = (obj: any) => {
-      Object.assign(obj, schema)
-      obj.type = type
+  function registerComponentType(type: ComponentType) {
+    const { name, schema } = type
+
+    const create = () => {
+      const obj = initializeComponentFromSchema({}, schema)
+      obj.name = name
       return obj
     }
-    const create = () => reset({})
     const release = (obj: any) => {
-      // Clear all properties on the object.
-      deleteObjectProperties(obj)
-      // Reset the object using default values.
-      return reset(obj)
+      resetComponentFromSchema(obj, schema)
+      obj.name = type.name
+      return obj
     }
 
-    componentPools[type] = createStackPool(create, release, initialPoolSize)
-    componentTable[type] = {}
+    componentPools[name] = createStackPool(create, release, initialPoolSize)
+    componentTable[name] = {}
   }
 
   /**
@@ -78,46 +77,48 @@ export function createComponentAdmin(initialPoolSize: number) {
       const component = componentTable[type][entity]
 
       if (component) {
-        removeComponent(entity, component.type)
+        removeComponent(entity, component.name)
       }
     }
   }
 
   /**
-   * Create a component instance using a component factory. If the component factory is pooled,
+   * Create a component instance using a component type. If the component type is pooled,
    * the object will be retained from the pool.
    *
-   * @param factory Component factory to create an instance from
-   * @param args Factory initializer arguments
+   * @param type Component type to create an instance from
+   * @param args Type initializer arguments
    */
-  function createComponentInstance<F extends ComponentFactory>(
-    factory: F,
-    ...args: FactoryArgs<F>
+  function createComponentInstance<F extends ComponentType>(
+    type: F,
+    ...args: ComponentTypeInitializerArgs<F>
   ) {
-    getComponentsOfType(factory.type)
+    getComponentsOfType(type.name)
 
-    const { type, schema, initialize } = factory
-    const pool = componentPools[type]
-    const component: AdminComponent = pool ? pool.retain() : Object.assign({}, schema)
+    const { name, initialize } = type
+    const pool = componentPools[name]
+    const instance = pool.retain()
 
-    initialize(component, ...args)
+    if (initialize) {
+      initialize(instance, ...args)
+    }
 
-    return component
+    return instance as InternalComponent
   }
 
   /**
    * Create a component and associate it with an entity entity.
    *
    * @param entity Entity to add the component to
-   * @param factory Factory used to instantiate the component
-   * @param args Factory initializer arguments
+   * @param type ComponentType used to instantiate the component
+   * @param args Type initializer arguments
    */
-  function addComponent<F extends ComponentFactory>(
+  function addComponent<F extends ComponentType>(
     entity: number,
-    factory: F,
-    ...args: FactoryArgs<F>
+    type: F,
+    ...args: ComponentTypeInitializerArgs<F>
   ) {
-    const component = createComponentInstance(factory, ...args)
+    const component = createComponentInstance(type, ...args)
 
     return insertComponent(entity, component) as Component
   }
@@ -130,17 +131,16 @@ export function createComponentAdmin(initialPoolSize: number) {
    * @param entity
    * @param component
    */
-  function insertComponent(entity: number, component: AdminComponent) {
-    const { type } = component
+  function insertComponent(entity: number, component: InternalComponent) {
+    const { name: type } = component
     const componentsOfType = getComponentsOfType(type)
     const existing = componentsOfType[entity]
 
     if (existing) {
-      removeComponent(entity, existing.type)
+      removeComponent(entity, existing.name)
     }
 
     component.entity = entity
-
     componentsOfType[entity] = component as PublicComponent
 
     return component
@@ -176,8 +176,8 @@ export function createComponentAdmin(initialPoolSize: number) {
    * @param entity Entity of the lookup.
    * @param type Component type to find.
    */
-  function getComponent<F extends ComponentFactory>(entity: number, factory: F): ComponentOf<F> {
-    const component = getComponentsOfType(factory.type)[entity]
+  function getComponent<F extends ComponentType>(entity: number, type: F): ComponentOf<F> {
+    const component = getComponentsOfType(type.name)[entity]
 
     if (!component) {
       throw componentDoesNotExistError
@@ -204,7 +204,7 @@ export function createComponentAdmin(initialPoolSize: number) {
 
   return {
     createComponentInstance,
-    registerComponentFactory,
+    registerComponentType,
     removeAllComponents,
     addComponent,
     insertComponent,

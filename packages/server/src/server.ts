@@ -8,16 +8,15 @@ import { NetEcsServerOptions } from "./types"
 export function createNetEcsServer(options: NetEcsServerOptions) {
   const server = createServer()
   const udp = new Server({ server })
-  const world = createEntityAdmin()
+  const world = createEntityAdmin(options.world)
   const onConnectionError = (event: { error: string }) => {
     console.error(event.error)
   }
   const clients = createClientAdmin(onConnectionError)
-  const networkSystem = createNetworkSystem(world, clients, options.network)
+  const network = createNetworkSystem(world, clients, options.network)
 
   udp.connections.subscribe(clients.registerConnection)
-
-  world.addSystem(networkSystem)
+  world.addSystem(network)
 
   return {
     world,

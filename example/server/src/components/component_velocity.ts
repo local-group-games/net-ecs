@@ -1,13 +1,13 @@
-import { createComponentFactory } from "@net-ecs/core"
+import { createComponentType, number } from "@net-ecs/core"
 
-export const Velocity = createComponentFactory(
-  "velocity",
-  {
-    x: 0,
-    y: 0,
+export const Velocity = createComponentType({
+  name: "velocity",
+  schema: {
+    x: number,
+    y: number,
   },
-  (velocity, x: number = velocity.x, y: number = velocity.y) => {
+  initialize(velocity, x: number = velocity.x, y: number = velocity.y) {
     velocity.x = x
     velocity.y = y
   },
-)
+})

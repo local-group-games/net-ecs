@@ -4,9 +4,10 @@ import { PredictionBuffer } from "../components/component_prediction_buffer"
 
 const sendRate = 20
 
-export const prediction = createSystem(
-  "prediction",
-  (world, transforms, buffers) => {
+export const prediction = createSystem({
+  name: "prediction",
+  query: [[Changed(Transform)], [With(PredictionBuffer)]],
+  execute(world, transforms, buffers) {
     const timeMs = world.clock.time * 1000
     const renderTime = timeMs - 1000 / sendRate
 
@@ -50,6 +51,4 @@ export const prediction = createSystem(
       }
     }
   },
-  [Changed(Transform)],
-  [With(PredictionBuffer)],
-)
+})

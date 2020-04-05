@@ -36,8 +36,8 @@ export function viewEntityAdmin(entityAdmin: EntityAdmin) {
       let selectorStrings = []
 
       for (let i = 0; i < query.length; i++) {
-        const { selectorType, componentType } = query[i]
-        selectorStrings.push(`${getReadableSelectorTypeName(selectorType)}(${componentType})`)
+        const { tag: selectorType, componentName } = query[i]
+        selectorStrings.push(`${getReadableSelectorTypeName(selectorType)}(${componentName})`)
       }
       data[selectorStrings.join(",")] = queryResults
     }

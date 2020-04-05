@@ -1,17 +1,14 @@
-import { ComponentFactory, Component } from "../component"
+import { ComponentType, Component, SchemaInitializer } from "../component"
+import { Schema, ComponentOfSchema } from "../schema"
 
-export function createComponentFactory<
+export function createComponentType<
   T extends string,
-  S extends {},
-  I extends (obj: S, ...args: any[]) => void
->(type: T, schema: S, initialize: I): ComponentFactory<T, S, I> {
-  return {
-    type,
-    schema,
-    initialize,
-  }
+  S extends Schema,
+  I extends SchemaInitializer<S>
+>(definition: { name: T; schema: S; initialize?: I }): ComponentType<T, S, I> {
+  return definition
 }
 
-export function getComponentType(identifier: ComponentFactory | Component | string) {
-  return typeof identifier === "string" ? identifier : identifier.type
+export function getComponentType(identifier: ComponentType | Component | string) {
+  return typeof identifier === "string" ? identifier : identifier.name
 }

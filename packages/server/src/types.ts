@@ -1,3 +1,4 @@
+import { EntityAdminOptions } from "@net-ecs/core/src"
 import { Signal } from "@web-udp/protocol"
 import { Server } from "@web-udp/server"
 
@@ -26,4 +27,5 @@ export type NetEcsServerNetworkOptions = {
 
 export type NetEcsServerOptions = {
   network: NetEcsServerNetworkOptions
+  world?: EntityAdminOptions
 }

@@ -1,17 +1,15 @@
-import { createComponentFactory } from "@net-ecs/core"
+import { createComponentType, number, array } from "@net-ecs/core"
 
-const schema = {
-  x: 0,
-  y: 0,
-  updates: [] as [number, number, number][],
-}
-
-export const PredictionBuffer = createComponentFactory(
-  "position_buffer",
-  schema,
-  (buffer, x = buffer.x, y = buffer.y) => {
+export const PredictionBuffer = createComponentType({
+  name: "prediction_buffer",
+  schema: {
+    x: number,
+    y: number,
+    updates: array(array(number)),
+  },
+  initialize(buffer, x = buffer.x, y = buffer.y) {
     buffer.updates = []
     buffer.x = x
     buffer.y = y
   },
-)
+})

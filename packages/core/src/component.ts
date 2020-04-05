@@ -1,27 +1,36 @@
 import { Entity } from "./entity"
+import { Schema, ComponentOfSchema, AnySchema } from "./schema"
 
-export type AdminComponent<T extends string = string, S extends {} = {}> = {
-  type: T
+export type InternalComponent<T extends string = string, S extends Schema = AnySchema> = {
+  name: T
   entity?: Entity
-} & S
+} & ComponentOfSchema<S>
 
-export type PublicComponent<T extends string = string, S extends {} = {}> = {
-  readonly type: T
+export type PublicComponent<T extends string = string, S extends Schema = AnySchema> = {
+  readonly name: T
   readonly entity: Entity
-} & S
+} & ComponentOfSchema<S>
 
-export interface ComponentFactory<
+export type SchemaInitializer<S extends AnySchema> = (
+  c: ComponentOfSchema<S>,
+  ...args: any[]
+) => any
+
+export interface ComponentType<
   T extends string = string,
-  S extends {} = any,
-  I extends (obj: S, ...args: any[]) => any = (obj: S, ...args: any[]) => any
+  S extends Schema = AnySchema,
+  I extends (c: ComponentOfSchema<S>, ...args: any[]) => any = (c: any, ...args: any[]) => any
 > {
-  type: T
+  name: T
   schema: S
-  initialize: I
+  initialize?: I
 }
 
-export type Component<T extends string = string, S extends {} = {}> = PublicComponent<T, S>
+export type Component<T extends string = string, S extends Schema = AnySchema> = PublicComponent<
+  T,
+  S
+>
 
-export type ComponentOf<F extends ComponentFactory> = F extends ComponentFactory<infer T, infer S>
+export type ComponentOf<F extends ComponentType> = F extends ComponentType<infer T, infer S>
   ? Component<T, S>
   : never

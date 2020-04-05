@@ -1,11 +1,13 @@
-import { Component, ComponentFactory, ComponentOf } from "./component"
+import { Component, ComponentOf, ComponentType } from "./component"
 import { createComponentAdmin } from "./component_admin"
 import { Entity } from "./entity"
+import { EntityTag } from "./entity_tag"
+import { createEntityTagAdmin } from "./entity_tag_admin"
 import * as Internal from "./internal"
-import { Selector, SelectorType } from "./selector"
+import { Selector } from "./selector"
 import { System, SystemQueryResult } from "./system"
 import { Clock } from "./types/clock"
-import { FactoryArgs } from "./types/util"
+import { ComponentTypeInitializerArgs } from "./types/util"
 import {
   getComponentType,
   mutableEmpty,
@@ -16,6 +18,8 @@ import {
 
 export type EntityAdminConfig = {
   initialPoolSize: number
+  systems: System[]
+  componentTypes: ComponentType[]
 }
 
 export type EntityAdminOptions = {
@@ -24,6 +28,8 @@ export type EntityAdminOptions = {
 
 const defaultOptions: EntityAdminConfig = {
   initialPoolSize: 500,
+  systems: [],
+  componentTypes: [],
 }
 
 enum ComponentTag {
@@ -32,79 +38,6 @@ enum ComponentTag {
 
 const systemNotRegisteredError = new Error("System has not been registered.")
 const systemAlreadyRegisteredError = new Error("System was already registered.")
-
-function createTagAdmin() {
-  const tags = {
-    [SelectorType.Created]: new Set<Entity>(),
-    [SelectorType.ComponentsChanged]: new Set<Entity>(),
-    [SelectorType.Changed]: new Set<Entity>(),
-    [SelectorType.Destroyed]: new Set<Entity>(),
-  }
-  const tagsByEntity = new Map<Entity, SelectorType>()
-  const changed = new Set<Entity>()
-
-  function get(entity: Entity): SelectorType | null {
-    return tagsByEntity.get(entity)
-  }
-
-  function set(entity: Entity, tag: SelectorType) {
-    const currentTag = tagsByEntity.get(entity)
-
-    if (currentTag) {
-      tags[currentTag].delete(entity)
-    }
-
-    tags[tag].add(entity)
-    tagsByEntity.set(entity, tag)
-    changed.add(entity)
-  }
-
-  function setIfNoTag(entity: Entity, tag: SelectorType) {
-    if (has(entity)) {
-      return false
-    }
-
-    set(entity, tag)
-
-    return true
-  }
-
-  function has(entity: Entity, tag?: SelectorType) {
-    const currentTag = get(entity)
-    return typeof tag === "number" ? currentTag === tag : Boolean(currentTag)
-  }
-
-  function remove(entity: Entity) {
-    const tag = tagsByEntity.get(entity)
-
-    if (!tag) {
-      return
-    }
-
-    tags[tag].delete(entity)
-    tagsByEntity.delete(entity)
-  }
-
-  function reset() {
-    tags[SelectorType.Created].clear()
-    tags[SelectorType.Destroyed].clear()
-    tags[SelectorType.Changed].clear()
-    tags[SelectorType.ComponentsChanged].clear()
-    tagsByEntity.clear()
-    changed.clear()
-  }
-
-  return {
-    ...(tags as { [K in keyof typeof tags]: ReadonlySet<Entity> }),
-    get,
-    set,
-    setIfNoTag,
-    has,
-    remove,
-    reset,
-    changed: changed as ReadonlySet<Entity>,
-  }
-}
 
 export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) {
   const config: EntityAdminConfig = Object.assign({}, defaultOptions, options)
@@ -118,7 +51,7 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
   const entities: Entity[] = []
   const components = createComponentAdmin(config.initialPoolSize)
   const queries: { [systemName: string]: SystemQueryResult } = {}
-  const tags = createTagAdmin()
+  const tags = createEntityTagAdmin()
   const componentsByTag = {
     [ComponentTag.Changed]: new Set<Component>(),
   }
@@ -157,22 +90,22 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     let componentCheckPassed = true
     let component: Component
 
-    if (selector.componentType) {
-      component = tryGetComponentByType(entity, selector.componentType)
+    if (selector.componentName) {
+      component = tryGetComponentByType(entity, selector.componentName)
       componentCheckPassed = component !== null && component !== undefined
     }
 
     if (!componentCheckPassed) {
-      return selector.selectorType === SelectorType.Without
+      return selector.tag === EntityTag.Without
     }
 
-    if (selector.selectorType === SelectorType.With) {
+    if (selector.tag === EntityTag.With) {
       return true
     }
 
-    const x = tags.has(entity, selector.selectorType)
+    const x = tags.has(entity, selector.tag)
 
-    if (selector.selectorType === SelectorType.Changed && component) {
+    if (selector.tag === EntityTag.Changed && component) {
       return x && isChangedComponent(component)
     }
 
@@ -233,7 +166,7 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     componentsByTag[ComponentTag.Changed].clear()
 
     // Release deleted entities' components before updating their queries.
-    for (const entity of tags[SelectorType.Destroyed]) {
+    for (const entity of tags[EntityTag.Destroyed]) {
       components.removeAllComponents(entity)
     }
 
@@ -256,7 +189,7 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
       const result = queries[system.name]
 
       if (result) {
-        system.update(entityAdmin, ...result)
+        system.execute(entityAdmin, ...result)
       }
     }
 
@@ -273,7 +206,7 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     const entity = (entitySequence += 1)
 
     entities.push(entity)
-    tags.set(entity, SelectorType.Created)
+    tags.set(entity, EntityTag.Created)
 
     return entity
   }
@@ -284,102 +217,99 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     }
 
     mutableRemoveUnordered(entities, entity)
-    tags.set(entity, SelectorType.Destroyed)
+    tags.set(entity, EntityTag.Destroyed)
 
     return entity
   }
 
-  function addComponent<F extends ComponentFactory>(
+  function addComponent<F extends ComponentType>(
     entity: Entity,
-    factory: F,
-    ...args: FactoryArgs<F>
+    type: F,
+    ...args: ComponentTypeInitializerArgs<F>
   ) {
-    if (tags.has(entity, SelectorType.Destroyed) || !entities.includes(entity)) {
+    if (tags.has(entity, EntityTag.Destroyed) || !entities.includes(entity)) {
       return false
     }
 
-    const component = components.addComponent(entity, factory, ...args)
+    const component = components.addComponent(entity, type, ...args)
 
-    tags.setIfNoTag(entity, SelectorType.ComponentsChanged)
+    tags.setIfNoTag(entity, EntityTag.ComponentsChanged)
 
     return component as ComponentOf<F>
   }
 
-  function removeComponent(entity: Entity, identifier: ComponentFactory | Component | string) {
-    const componentType = getComponentType(identifier)
+  function removeComponent(entity: Entity, identifier: ComponentType | Component | string) {
+    const componentName = getComponentType(identifier)
 
     // No-op if the entity is being deleted.
-    if (tags.has(entity, SelectorType.Destroyed)) {
+    if (tags.has(entity, EntityTag.Destroyed)) {
       return false
     }
 
-    components.removeComponent(entity, componentType)
-    tags.setIfNoTag(entity, SelectorType.ComponentsChanged)
+    components.removeComponent(entity, componentName)
+    tags.setIfNoTag(entity, EntityTag.ComponentsChanged)
   }
 
-  function getMutableComponent<F extends ComponentFactory>(
-    entity: Entity,
-    factory: F,
-  ): ComponentOf<F> {
-    const component = components.getComponent(entity, factory)
+  function getMutableComponent<F extends ComponentType>(entity: Entity, type: F): ComponentOf<F> {
+    const component = components.getComponent(entity, type)
 
-    tags.setIfNoTag(entity, SelectorType.Changed)
+    tags.setIfNoTag(entity, EntityTag.Changed)
     componentsByTag[ComponentTag.Changed].add(component)
 
     return component as ComponentOf<F>
   }
 
-  function getMutableComponentByType(entity: Entity, componentType: string) {
-    const component = components.getComponentByType(entity, componentType)
+  function getMutableComponentByType(entity: Entity, componentName: string) {
+    const component = components.getComponentByType(entity, componentName)
 
-    tags.setIfNoTag(entity, SelectorType.Changed)
+    tags.setIfNoTag(entity, EntityTag.Changed)
     componentsByTag[ComponentTag.Changed].add(component)
 
     return component
   }
 
-  function tryGetMutableComponent<F extends ComponentFactory>(entity: Entity, factory: F) {
+  function tryGetMutableComponent<F extends ComponentType>(entity: Entity, type: F) {
     try {
-      return getMutableComponent(entity, factory)
+      return getMutableComponent(entity, type)
     } catch {
       return null
     }
   }
 
-  function tryGetMutableComponentByType<F extends ComponentFactory>(
+  function tryGetMutableComponentByType<F extends ComponentType>(
     entity: Entity,
-    componentType: string,
+    componentName: string,
   ) {
     try {
-      return getMutableComponentByType(entity, componentType)
+      return getMutableComponentByType(entity, componentName)
     } catch {
       return null
     }
   }
 
-  function tryGetComponent<F extends ComponentFactory>(entity: Entity, factory: F) {
+  function tryGetComponent<F extends ComponentType>(entity: Entity, type: F) {
     try {
-      return components.getComponent(entity, factory)
+      return components.getComponent(entity, type)
     } catch {
       return null
     }
   }
 
-  function tryGetComponentByType(entity: Entity, componentType: string) {
+  function tryGetComponentByType(entity: Entity, componentName: string) {
     try {
-      return components.getComponentByType(entity, componentType)
+      return components.getComponentByType(entity, componentName)
     } catch {
       return null
     }
   }
 
-  function createSingletonComponent<C extends ComponentFactory>(
-    factory: C,
-    ...args: FactoryArgs<C>
+  function createSingletonComponent<C extends ComponentType>(
+    type: C,
+    ...args: ComponentTypeInitializerArgs<C>
   ) {
     const entity = createEntity()
 
-    addComponent(entity, factory, ...args)
+    addComponent(entity, type, ...args)
 
     return entity
   }
@@ -403,8 +333,11 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     getComponentByType,
     createComponentInstance,
     insertComponent,
-    registerComponentFactory,
+    registerComponentType,
   } = components
+
+  config.systems.forEach(addSystem)
+  config.componentTypes.forEach(registerComponentType)
 
   const entityAdmin = {
     entities: entities as ReadonlyArray<Entity>,
@@ -429,7 +362,7 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     setModified,
     createComponentInstance,
     createSingletonComponent,
-    registerComponentFactory,
+    registerComponentType,
     view,
     isChangedComponent,
     // internal

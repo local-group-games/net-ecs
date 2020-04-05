@@ -20,9 +20,10 @@ export function createNetworkSystem(
 ) {
   const networkedComponentTypes = Object.keys(options.priorities)
   const priorityAccumulator = createPriorityAccumulator(options.priorities)
-  const network = createSystem(
-    "network",
-    (world, created, changed, destroyed) => {
+  const network = createSystem({
+    name: "network",
+    query: [[Created()], [Changed()], [Destroyed()]],
+    execute(world, created, changed, destroyed) {
       for (const client of clients) {
         if (!client.initialized && client.reliable) {
           client.initialized = true
@@ -34,10 +35,7 @@ export function createNetworkSystem(
       sendChanged(changed)
       sendDestroyed(destroyed)
     },
-    [Created()],
-    [Changed()],
-    [Destroyed()],
-  )
+  })
   const updateReliable: Component[] = []
   const updateUnreliable: Component[] = []
 
@@ -79,9 +77,9 @@ export function createNetworkSystem(
       const entity = updated[i]
 
       for (let j = 0; j < networkedComponentTypes.length; j++) {
-        const componentType = networkedComponentTypes[j]
-        const config = options.priorities[componentType]
-        const component = world.getComponentByType(entity, componentType)
+        const componentName = networkedComponentTypes[j]
+        const config = options.priorities[componentName]
+        const component = world.getComponentByType(entity, componentName)
 
         if (!world.isChangedComponent(component)) {
           continue

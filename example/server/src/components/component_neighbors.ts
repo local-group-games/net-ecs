@@ -1,15 +1,9 @@
-import { createComponentFactory, Entity } from "@net-ecs/core"
+import { createComponentType, Entity, array, number } from "@net-ecs/core"
 
-const schema = {
-  near: [] as Entity[],
-  far: [] as Entity[],
-}
-
-export const Neighbors = createComponentFactory(
-  "neighbors",
-  schema,
-  (neighbors, near: Entity[] = neighbors.near, far: Entity[] = neighbors.far) => {
-    neighbors.near = near
-    neighbors.far = far
+export const Neighbors = createComponentType({
+  name: "neighbors",
+  schema: {
+    near: array(number),
+    far: array(number),
   },
-)
+})

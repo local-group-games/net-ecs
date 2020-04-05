@@ -9,6 +9,10 @@ export * from "./systems"
 
 export function createNetEcsExampleServer() {
   const server = createNetEcsServer({
+    world: {
+      systems: [neighbors, flock, movement],
+      componentTypes: [Boid, Neighbors, Transform, Velocity],
+    },
     network: {
       priorities: {
         transform: {
@@ -24,11 +28,6 @@ export function createNetEcsExampleServer() {
       unreliableUpdateSize: 1000,
     },
   })
-
-  server.world.registerComponentFactory(Boid)
-  server.world.registerComponentFactory(Neighbors)
-  server.world.registerComponentFactory(Transform)
-  server.world.registerComponentFactory(Velocity)
 
   const boids: Entity[] = []
 
@@ -49,10 +48,6 @@ export function createNetEcsExampleServer() {
 
     server.world.destroyEntity(boid)
   }
-
-  server.world.addSystem(neighbors)
-  server.world.addSystem(flock)
-  server.world.addSystem(movement)
 
   for (let i = 0; i < 200; i++) {
     addBoid()

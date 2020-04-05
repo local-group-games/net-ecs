@@ -5,6 +5,8 @@ import {
   decode,
   Entity,
   MessageType,
+  EntityAdminOptions,
+  EntityAdmin,
 } from "@net-ecs/core"
 import { Client, Connection } from "@web-udp/client"
 import { SESSION_ID } from "./const"
@@ -18,13 +20,21 @@ const attemptedToRemoveNonExistentEntityError = new Error(
   "Attempted to remove non-existent entity.",
 )
 
-export function createNetEcsClient(
-  url: string,
-  updaters: { [type: string]: ComponentUpdater<any> },
-) {
-  const udp = new Client({ url })
-  const world = createEntityAdmin()
+export type NetEcsClientOptions = {
+  url: string
+  updaters?: { [componentType: string]: ComponentUpdater<any> }
+  world?: EntityAdminOptions
+}
+
+function defaultUpdater(world: EntityAdmin, a: object, b: object) {
+  return merge(a, b)
+}
+
+export function createNetEcsClient(options: NetEcsClientOptions) {
+  const udp = new Client({ url: options.url })
+  const world = createEntityAdmin(options.world)
   const remoteToLocal = new Map<Entity, Entity>()
+  const { updaters = {} } = options
 
   let reliable: Connection | null = null
   let unreliable: Connection | null = null
@@ -32,15 +42,15 @@ export function createNetEcsClient(
   function handleStateUpdate(changed: Component[]) {
     for (let i = 0; i < changed.length; i++) {
       const remoteComponent = changed[i]
-      const updater = updaters[remoteComponent.type] || merge
+      const updater = updaters[remoteComponent.name] || defaultUpdater
       const localEntity = remoteToLocal.get(remoteComponent.entity)
 
       // May have not recieved an EntityCreatedMessage yet.
       if (localEntity) {
-        const localComponent = world.tryGetMutableComponentByType(localEntity, remoteComponent.type)
+        const localComponent = world.tryGetMutableComponentByType(localEntity, remoteComponent.name)
 
         if (localComponent) {
-          updater(localComponent, remoteComponent)
+          updater(world, localComponent, remoteComponent)
         } else {
           world.insertComponent(localEntity, remoteComponent)
         }

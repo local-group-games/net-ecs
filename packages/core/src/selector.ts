@@ -1,36 +1,26 @@
-import { ComponentFactory } from "./component"
-
-export enum SelectorType {
-  Without,
-  With,
-  Created,
-  Destroyed,
-  Changed,
-  ComponentsChanged,
-}
+import { ComponentType } from "./component"
+import { EntityTag } from "./entity_tag"
 
 export type Selector = {
-  selectorType: SelectorType
-  componentType: string
+  tag: EntityTag
+  componentName: string
 }
 
-function createSelector(selectorType: SelectorType) {
-  return (factory?: ComponentFactory | string) => {
-    const selector = {
-      selectorType,
-    } as Selector
+function createSelector(tag: EntityTag) {
+  return (type?: ComponentType | string) => {
+    const selector = { tag } as Selector
 
-    if (factory) {
-      selector.componentType = typeof factory === "string" ? factory : factory.type
+    if (type) {
+      selector.componentName = typeof type === "string" ? type : type.name
     }
 
     return selector
   }
 }
 
-export const Without = createSelector(SelectorType.Without)
-export const With = createSelector(SelectorType.With)
-export const Created = createSelector(SelectorType.Created)
-export const Destroyed = createSelector(SelectorType.Destroyed)
-export const Changed = createSelector(SelectorType.Changed)
-export const ComponentsChanged = createSelector(SelectorType.Changed)
+export const Without = createSelector(EntityTag.Without)
+export const With = createSelector(EntityTag.With)
+export const Created = createSelector(EntityTag.Created)
+export const Destroyed = createSelector(EntityTag.Destroyed)
+export const Changed = createSelector(EntityTag.Changed)
+export const ComponentsChanged = createSelector(EntityTag.Changed)

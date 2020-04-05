@@ -3,9 +3,10 @@ import { Transform, Velocity } from "../components"
 
 const SPEED = 0.1
 
-export const movement = createSystem(
-  "movement",
-  (world, entities) => {
+export const movement = createSystem({
+  name: "movement",
+  query: [[With(Transform), With(Velocity)]],
+  execute(world, entities) {
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
       const position = world.getMutableComponent(entity, Transform)
@@ -26,5 +27,4 @@ export const movement = createSystem(
       }
     }
   },
-  [With(Transform), With(Velocity)],
-)
+})

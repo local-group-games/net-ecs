@@ -2,22 +2,24 @@ import { ComponentOf, createSystem, With } from "@net-ecs/core"
 import { Color } from "../components"
 
 function transition(color: ComponentOf<typeof Color>) {
-  if (color.red > 0 && color.blue === 0) {
-    color.red--
-    color.green++
+  if (color.r > 0 && color.b === 0) {
+    color.r--
+    color.g++
   }
-  if (color.green > 0 && color.red === 0) {
-    color.green--
-    color.blue++
+  if (color.g > 0 && color.r === 0) {
+    color.g--
+    color.b++
   }
-  if (color.blue > 0 && color.green === 0) {
-    color.red++
-    color.blue--
+  if (color.b > 0 && color.g === 0) {
+    color.r++
+    color.b--
   }
 }
 
-export const colorTransition = createSystem(
-  "color_transition",
-  (world, [color]) => transition(world.getMutableComponent(color, Color)),
-  [With(Color)],
-)
+export const colorTransition = createSystem({
+  name: "color_transition",
+  query: [[With(Color)]],
+  execute(world, [color]) {
+    transition(world.getMutableComponent(color, Color))
+  },
+})

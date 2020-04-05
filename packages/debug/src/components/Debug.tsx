@@ -18,12 +18,7 @@ export const Debug = () => {
           <dt>entities</dt>
           <dd>{entities.length}</dd>
           <dt>components</dt>
-          <dd>
-            {Object.values(componentTable).reduce(
-              (a, x) => a + Object.keys(x).length,
-              0,
-            )}
-          </dd>
+          <dd>{Object.values(componentTable).reduce((a, x) => a + Object.keys(x).length, 0)}</dd>
           <dt>systems</dt>
           <dd>{Object.keys(systems).length}</dd>
         </React.Fragment>
@@ -33,9 +28,9 @@ export const Debug = () => {
   const poolsCard = (
     <PanelCard title="component pools" key="componentPools">
       <dl>
-        {Object.entries(componentPools).map(([componentType, heapSize]) => (
-          <React.Fragment key={componentType}>
-            <dt>{componentType}</dt>
+        {Object.entries(componentPools).map(([componentName, heapSize]) => (
+          <React.Fragment key={componentName}>
+            <dt>{componentName}</dt>
             <dd>{heapSize}</dd>
           </React.Fragment>
         ))}
@@ -45,9 +40,9 @@ export const Debug = () => {
   const componentTableCard = (
     <PanelCard title="components" key="components">
       <dl>
-        {Object.entries(componentTable).map(([componentType, componentMap]) => (
-          <React.Fragment key={componentType}>
-            <dt>{componentType}</dt>
+        {Object.entries(componentTable).map(([componentName, componentMap]) => (
+          <React.Fragment key={componentName}>
+            <dt>{componentName}</dt>
             <dd>{Object.keys(componentMap).length}</dd>
           </React.Fragment>
         ))}
@@ -61,16 +56,14 @@ export const Debug = () => {
         return (
           <PanelDrawer title={systemName} key={systemName}>
             <dl>
-              {Object.entries(queryResults).map(
-                ([queryString, queryResultCount]) => {
-                  return (
-                    <React.Fragment key={queryString}>
-                      <dt>{queryString}</dt>
-                      <dd>{queryResultCount.length}</dd>
-                    </React.Fragment>
-                  )
-                },
-              )}
+              {Object.entries(queryResults).map(([queryString, queryResultCount]) => {
+                return (
+                  <React.Fragment key={queryString}>
+                    <dt>{queryString}</dt>
+                    <dd>{queryResultCount.length}</dd>
+                  </React.Fragment>
+                )
+              })}
             </dl>
           </PanelDrawer>
         )

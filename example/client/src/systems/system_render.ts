@@ -7,20 +7,21 @@ import { app, framerate, graphics } from "../graphics"
 
 const renderVelocity = new Victor(0, 0)
 
-function fromRGBto32(red: number, green: number, blue: number) {
+function fromRGBto32(r: number, g: number, b: number) {
   return Number(
     "0x" +
-      ("0" + red.toString(16)).slice(-2) +
-      ("0" + green.toString(16)).slice(-2) +
-      ("0" + blue.toString(16)).slice(-2),
+      ("0" + r.toString(16)).slice(-2) +
+      ("0" + g.toString(16)).slice(-2) +
+      ("0" + b.toString(16)).slice(-2),
   )
 }
 
-export const render = createSystem(
-  "render",
-  (world, [color], entities) => {
-    const { red, green, blue } = world.getComponent(color, Color)
-    const color32 = fromRGBto32(red, green, blue)
+export const render = createSystem({
+  name: "render",
+  query: [[With(Color)], [With(PredictionBuffer), With(Velocity)]],
+  execute(world, [color], entities) {
+    const { r, g, b } = world.getComponent(color, Color)
+    const color32 = fromRGBto32(r, g, b)
 
     graphics.clear()
 
@@ -46,6 +47,4 @@ export const render = createSystem(
       graphics.lineTo(x + renderVelocity.x, y + renderVelocity.y)
     }
   },
-  [With(Color)],
-  [With(PredictionBuffer), With(Velocity)],
-)
+})

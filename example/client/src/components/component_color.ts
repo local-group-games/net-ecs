@@ -1,17 +1,15 @@
-import { createComponentFactory } from "@net-ecs/core"
+import { createComponentType, number } from "@net-ecs/core"
 
-const schema = {
-  red: 255,
-  green: 0,
-  blue: 0,
-}
-
-export const Color = createComponentFactory(
-  "color",
-  schema,
-  (color, red: number = schema.red, green: number = schema.green, blue: number = schema.blue) => {
-    color.red = red
-    color.green = green
-    color.blue = blue
+export const Color = createComponentType({
+  name: "color",
+  schema: {
+    r: { type: number, defaultValue: 255 },
+    g: number,
+    b: number,
   },
-)
+  initialize(color, r: number = color.r, g: number = color.g, b: number = color.b) {
+    color.r = r
+    color.g = g
+    color.b = b
+  },
+})

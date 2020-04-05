@@ -13,9 +13,10 @@ const normalizedVelocity = new Victor(0, 0)
 
 const sum = { x: 0, y: 0 }
 
-export const flock = createSystem(
-  "flock",
-  (world, entities) => {
+export const flock = createSystem({
+  name: "flock",
+  query: [[With(Boid), With(Neighbors), With(Transform), With(Velocity)]],
+  execute(world, entities) {
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
       const boid = world.getMutableComponent(entity, Boid)
@@ -103,5 +104,4 @@ export const flock = createSystem(
       velocity.y = normalizedVelocity.y
     }
   },
-  [With(Boid), With(Neighbors), With(Transform), With(Velocity)],
-)
+})

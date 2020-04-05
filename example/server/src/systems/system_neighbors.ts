@@ -8,9 +8,10 @@ const FAR = 100
 const v1 = new Victor(0, 0)
 const v2 = new Victor(0, 0)
 
-export const neighbors = createSystem(
-  "neighbors",
-  (world, entities) => {
+export const neighbors = createSystem({
+  name: "neighbors",
+  query: [[With(Transform), With(Neighbors)]],
+  execute(world, entities) {
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
       const neighbors = world.tryGetMutableComponent(entity, Neighbors)
@@ -49,5 +50,4 @@ export const neighbors = createSystem(
       }
     }
   },
-  [With(Transform), With(Neighbors)],
-)
+})

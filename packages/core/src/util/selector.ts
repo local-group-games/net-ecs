@@ -1,16 +1,16 @@
-import { SelectorType } from "../selector"
+import { EntityTag } from "../entity_tag"
 
-export function getReadableSelectorTypeName(selectorType: SelectorType) {
+export function getReadableSelectorTypeName(selectorType: EntityTag) {
   switch (selectorType) {
-    case SelectorType.Created:
+    case EntityTag.Created:
       return "Created"
-    case SelectorType.Changed:
+    case EntityTag.Changed:
       return "Changed"
-    case SelectorType.Destroyed:
+    case EntityTag.Destroyed:
       return "Destroyed"
-    case SelectorType.With:
+    case EntityTag.With:
       return "With"
-    case SelectorType.Without:
+    case EntityTag.Without:
       return "Without"
   }
 }

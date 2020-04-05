@@ -6,7 +6,7 @@ export function createPriorityAccumulator(priorities: PriorityConfig) {
   const temp: Component[] = []
 
   function updateWeight(component: Component) {
-    const config = priorities[component.type]
+    const config = priorities[component.name]
     const weight = weights.get(component) || 0
 
     weights.set(component, weight + config.weight)
