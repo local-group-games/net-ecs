@@ -42,7 +42,7 @@ export function createNetEcsClient(options: NetEcsClientOptions) {
   function handleStateUpdate(changed: Component[]) {
     for (let i = 0; i < changed.length; i++) {
       const remoteComponent = changed[i]
-      const updater = updaters[remoteComponent.name] || defaultUpdater
+      const updater = updaters[remoteComponent.name] || merge
       const localEntity = remoteToLocal.get(remoteComponent.entity)
 
       // May have not recieved an EntityCreatedMessage yet.
