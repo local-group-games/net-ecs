@@ -1,5 +1,7 @@
 import { Arguments } from "../types/util"
 
+export function noop() {}
+
 export function pipe<T extends (...args: any[]) => any>(
   first: T,
   ...rest: ((...args: any[]) => any)[]

@@ -1,8 +1,6 @@
 import { decode, encode } from "@msgpack/msgpack"
 import { Component } from "../component"
 import { Entity } from "../entity"
-import { Arguments } from "../types/util"
-import { pipe } from "../util/fp"
 
 export enum MessageType {
   StateUpdate,
@@ -11,43 +9,57 @@ export enum MessageType {
   ComponentRemoved,
 }
 
-export type Message<T extends MessageType, P> = [T, P]
+export type Message<T extends number = number, P = any> = [T, P, boolean, number]
+export type CustomMessage<T extends number = number, P = any> = [T, P, false, number]
 
-export type StateUpdateMessage = Message<MessageType.StateUpdate, Component[]>
+export type StateUpdateMessage = Message<MessageType.StateUpdate, (number | Component)[]>
 export type EntitiesCreatedMessage = Message<MessageType.EntitiesCreated, ReadonlyArray<Entity>>
 export type EntitiesDestroyedMessage = Message<MessageType.EntitiesDestroyed, ReadonlyArray<Entity>>
 export type ComponentRemovedMessage = Message<MessageType.ComponentRemoved, (Entity | string)[]>
 
-export type AnyMessage =
-  | StateUpdateMessage
-  | EntitiesCreatedMessage
-  | EntitiesDestroyedMessage
-  | ComponentRemovedMessage
+export function createMessageHelper<T extends number, A extends any[], P>(
+  type: T,
+  fn: (...args: A) => P,
+  lib?: true,
+): (tick: number, ...args: A) => typeof lib extends boolean ? Message<T, P> : CustomMessage<T, P> {
+  return (tick: number, ...args: A) => [type, fn(...args), lib === true ? lib : false, tick]
+}
 
-const helpers = {
-  stateUpdate: (payload: Component[]): StateUpdateMessage => [MessageType.StateUpdate, payload],
-  entitiesCreated: (payload: ReadonlyArray<Entity>): EntitiesCreatedMessage => [
+export type MessageHelper<T extends number = number, P = any> = (
+  frame: number,
+  ...args: any[]
+) => Message<T, P>
+
+export const protocol = {
+  // Client
+
+  // Server
+  stateUpdate: createMessageHelper(
+    MessageType.StateUpdate,
+    (payload: Component[]) => payload,
+    true,
+  ),
+  entitiesCreated: createMessageHelper(
     MessageType.EntitiesCreated,
-    payload,
-  ],
-  entitiesDestroyed: (payload: ReadonlyArray<Entity>): EntitiesDestroyedMessage => [
+    (payload: ReadonlyArray<Entity>) => payload,
+    true,
+  ),
+  entitiesDestroyed: createMessageHelper(
     MessageType.EntitiesDestroyed,
-    payload,
-  ],
-  componentRemoved: (payload: (Entity | string)[]): ComponentRemovedMessage => [
+    (payload: ReadonlyArray<Entity>) => payload,
+    true,
+  ),
+  componentRemoved: createMessageHelper(
     MessageType.ComponentRemoved,
-    payload,
-  ],
+    (payload: (Entity | string)[]) => payload,
+    true,
+  ),
 }
 
-type Protocol = {
-  [k in keyof typeof helpers]: (...args: Arguments<typeof helpers[k]>) => Uint8Array
-}
+export type ExtractProtocolMessageTypes<T extends { [key: string]: MessageHelper }> = {
+  [K in keyof T]: ReturnType<T[K]>
+}[keyof T]
 
-export const protocol = Object.keys(helpers).reduce((p, key) => {
-  const k = key as keyof typeof helpers
-  p[k] = pipe(helpers[k], encode)
-  return p
-}, {} as Protocol)
+export type NetEcsMessage = ExtractProtocolMessageTypes<typeof protocol>
 
-export { decode }
+export { encode, decode }

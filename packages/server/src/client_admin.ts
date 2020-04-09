@@ -1,14 +1,19 @@
-import { Connection, NetEcsServerClient } from "./types"
+import { decode, Message, noop, EntityAdmin } from "@net-ecs/core"
+import { Connection, NetEcsServerClient, NetEcsServerNetworkOptions } from "./types"
 
 export interface NetEcsClientAdmin {
   [Symbol.iterator]: () => Generator<NetEcsServerClient>
   registerConnection(connection: Connection): void
+  messages: (client: NetEcsServerClient) => Generator<Message>
 }
 
 export function createClientAdmin(
-  onConnectionError: (event: { error: string }) => any,
+  world: EntityAdmin,
+  options: NetEcsServerNetworkOptions,
 ): NetEcsClientAdmin {
+  const { onClientConnect = noop, onConnectionError = noop, onClientDisconnect = noop } = options
   const clients: NetEcsServerClient[] = []
+  const messages = new WeakMap<NetEcsServerClient, Message[]>()
 
   function registerConnection(connection: Connection) {
     const { metadata } = connection
@@ -27,6 +32,7 @@ export function createClientAdmin(
         initialized: false,
       }
       clients.push(client)
+      messages.set(client, [])
     }
 
     if (metadata.reliable) {
@@ -35,6 +41,17 @@ export function createClientAdmin(
       client.unreliable = connection
     }
 
+    if (client.reliable && client.unreliable) {
+      onClientConnect(client, world)
+    }
+
+    connection.closed.subscribe(() => onClientDisconnect(client, world))
+    connection.messages.subscribe(data => {
+      const message = decode(data) as Message
+      const buffer = messages.get(client)!
+
+      buffer.push(message)
+    })
     connection.errors.subscribe(onConnectionError)
     connection.closed.subscribe(() => {
       clients.splice(clients.indexOf(client), 1)
@@ -45,6 +62,14 @@ export function createClientAdmin(
     *[Symbol.iterator]() {
       for (let i = 0; i < clients.length; i++) {
         yield clients[i]
+      }
+    },
+    *messages(client: NetEcsServerClient) {
+      const buffer = messages.get(client)
+      let message: Message
+
+      while ((message = buffer.pop())) {
+        yield message
       }
     },
     registerConnection,

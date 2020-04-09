@@ -1,67 +1,67 @@
-import { createNetEcsServer } from "@net-ecs/server"
-import Victor from "victor"
-import { Boid, Neighbors, Transform, Velocity } from "./components"
-import { flock, movement, neighbors } from "./systems"
-import { Entity } from "@net-ecs/core/src"
+import { encode, protocol as coreProtocol } from "@net-ecs/core"
+import { createNetEcsServer, NetEcsServerClient } from "@net-ecs/server"
+import { Transform } from "./components"
+import { ExampleMessage, ExampleMessageType, protocol } from "./protocol"
+import { applyInput } from "./helpers"
 
 export * from "./components"
-export * from "./systems"
+export * from "./helpers"
+export * from "./protocol"
+export * from "./types"
 
 export function createNetEcsExampleServer() {
+  const entitiesByClient = new WeakMap<NetEcsServerClient, number>()
   const server = createNetEcsServer({
     world: {
-      systems: [neighbors, flock, movement],
-      componentTypes: [Boid, Neighbors, Transform, Velocity],
+      systems: [],
+      componentTypes: [Transform],
     },
     network: {
       priorities: {
         transform: {
-          weight: 2,
-          unreliable: true,
-        },
-        velocity: {
           weight: 1,
           unreliable: true,
         },
       },
       unreliableSendRate: (1 / 20) * 1000,
       unreliableUpdateSize: 1000,
+      onClientConnect(client, world) {
+        const entity = world.createEntity()
+        const transform = world.addComponent(entity, Transform)
+
+        if (transform) {
+          entitiesByClient.set(client, entity)
+
+          client.reliable.send(encode(protocol.clientEntity(-1, entity)))
+          setTimeout(() => {
+            client.reliable.send(encode(coreProtocol.stateUpdate(world.clock.tick, [transform])))
+          }, 100)
+        }
+      },
+      onClientDisconnect(client, world) {
+        const entity = entitiesByClient.get(client)
+
+        if (!entity) {
+          return
+        }
+
+        world.destroyEntity(entity)
+        entitiesByClient.delete(client)
+      },
+      onClientMessage(message: ExampleMessage, client, world) {
+        const entity = entitiesByClient.get(client)
+
+        switch (message[0]) {
+          case ExampleMessageType.Move:
+            const data = message[1]
+            const transform = world.getMutableComponent(entity, Transform)
+
+            applyInput(data, transform)
+            break
+        }
+      },
     },
   })
-
-  const boids: Entity[] = []
-
-  function addBoid() {
-    const velocity = new Victor(Math.random() * 2 - 1, Math.random() * 2 - 1).normalize()
-    const entity = server.world.createEntity()
-
-    server.world.addComponent(entity, Transform, Math.random() * 800, Math.random() * 600)
-    server.world.addComponent(entity, Boid)
-    server.world.addComponent(entity, Neighbors)
-    server.world.addComponent(entity, Velocity, velocity.x, velocity.y)
-
-    boids.push(entity)
-  }
-
-  function removeBoid() {
-    const boid = boids.shift()
-
-    server.world.destroyEntity(boid)
-  }
-
-  for (let i = 0; i < 200; i++) {
-    addBoid()
-  }
-
-  setInterval(() => server.world.tick((1 / 60) * 1000), (1 / 60) * 1000)
-
-  setInterval(() => {
-    if (Math.random() > 0.5) {
-      for (let i = 0; i < 10; i++) addBoid()
-    } else {
-      for (let i = 0; i < 10; i++) removeBoid()
-    }
-  }, 2000)
 
   return server
 }

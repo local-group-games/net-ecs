@@ -1,11 +1,7 @@
 import { createSystem, With } from "@net-ecs/core"
-import { Velocity } from "@net-ecs/example-server"
-import Victor from "victor"
 import { Color } from "../components"
-import { PredictionBuffer } from "../components/component_prediction_buffer"
+import { InterpolationBuffer } from "../components/component_interpolation_buffer"
 import { app, framerate, graphics } from "../graphics"
-
-const renderVelocity = new Victor(0, 0)
 
 function fromRGBto32(r: number, g: number, b: number) {
   return Number(
@@ -18,7 +14,7 @@ function fromRGBto32(r: number, g: number, b: number) {
 
 export const render = createSystem({
   name: "render",
-  query: [[With(Color)], [With(PredictionBuffer), With(Velocity)]],
+  query: [[With(Color)], [With(InterpolationBuffer)]],
   execute(world, [color], entities) {
     const { r, g, b } = world.getComponent(color, Color)
     const color32 = fromRGBto32(r, g, b)
@@ -31,20 +27,10 @@ export const render = createSystem({
 
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
-      const velocity = world.getComponent(entity, Velocity)
-      const { x, y } = world.getComponent(entity, PredictionBuffer)
+      const { x, y } = world.getComponent(entity, InterpolationBuffer)
 
       graphics.lineStyle(1, color32)
       graphics.drawCircle(x, y, 4)
-
-      renderVelocity.x = velocity.x
-      renderVelocity.y = velocity.y
-      renderVelocity.normalize()
-      renderVelocity.multiplyScalar(10)
-
-      graphics.lineStyle(1, color32, 1)
-      graphics.moveTo(x, y)
-      graphics.lineTo(x + renderVelocity.x, y + renderVelocity.y)
     }
   },
 })

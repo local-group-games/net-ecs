@@ -1,4 +1,4 @@
-import { createEntityAdmin } from "@net-ecs/core"
+import { createEntityAdmin, noop, CustomMessage } from "@net-ecs/core"
 import { Server } from "@web-udp/server"
 import { createServer } from "http"
 import { createClientAdmin } from "./client_admin"
@@ -9,10 +9,7 @@ export function createNetEcsServer(options: NetEcsServerOptions) {
   const server = createServer()
   const udp = new Server({ server })
   const world = createEntityAdmin(options.world)
-  const onConnectionError = (event: { error: string }) => {
-    console.error(event.error)
-  }
-  const clients = createClientAdmin(onConnectionError)
+  const clients = createClientAdmin(world, options.network)
   const network = createNetworkSystem(world, clients, options.network)
 
   udp.connections.subscribe(clients.registerConnection)

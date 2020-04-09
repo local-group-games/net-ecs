@@ -24,3 +24,12 @@ export const number = createDataType<number>({
     c[key] = value
   },
 })
+
+export const boolean = createDataType<boolean>({
+  create(value = false) {
+    return value
+  },
+  reset(c, key, value = false) {
+    c[key] = value
+  },
+})

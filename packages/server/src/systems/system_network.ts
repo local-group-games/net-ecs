@@ -1,25 +1,30 @@
 import {
   Changed,
+  CustomMessage,
   Component,
+  Created,
   createSystem,
+  Destroyed,
+  encode,
   Entity,
   EntityAdmin,
-  protocol,
-  Destroyed,
   mutableEmpty,
-  Created,
+  noop,
+  protocol,
 } from "@net-ecs/core"
-import { createPriorityAccumulator } from "../priority_accumulator"
-import { NetEcsServerClient, NetEcsServerNetworkOptions } from "../types"
 import { NetEcsClientAdmin } from "../client_admin"
+import { createPriorityAccumulator } from "../priority_accumulator"
+import { NetEcsServerNetworkOptions, NetEcsServerClient } from "../types"
 
 export function createNetworkSystem(
   world: EntityAdmin,
   clients: NetEcsClientAdmin,
   options: NetEcsServerNetworkOptions,
 ) {
+  const { onClientMessage = noop } = options
   const networkedComponentTypes = Object.keys(options.priorities)
   const priorityAccumulator = createPriorityAccumulator(options.priorities)
+  const lastTicks = new WeakMap<NetEcsServerClient, number>()
   const network = createSystem({
     name: "network",
     query: [[Created()], [Changed()], [Destroyed()]],
@@ -27,7 +32,20 @@ export function createNetworkSystem(
       for (const client of clients) {
         if (!client.initialized && client.reliable) {
           client.initialized = true
-          client.reliable.send(protocol.entitiesCreated(world.entities))
+          client.reliable.send(encode(protocol.entitiesCreated(-1, world.entities)))
+        }
+
+        // Process client messages.
+        for (const message of clients.messages(client)) {
+          const [, , lib, tick] = message
+
+          lastTicks.set(client, tick)
+
+          if (lib) {
+            // Handle client library message.
+          } else {
+            onClientMessage(message as CustomMessage, client, world)
+          }
         }
       }
 
@@ -46,10 +64,11 @@ export function createNetworkSystem(
       return
     }
 
-    const packet = protocol.entitiesCreated(created)
-
     for (const client of clients) {
-      client.reliable?.send(packet)
+      const tick = lastTicks.get(client)
+      const message = protocol.entitiesCreated(tick, created)
+
+      client.reliable?.send(encode(message))
     }
   }
 
@@ -58,10 +77,11 @@ export function createNetworkSystem(
       return
     }
 
-    const packet = protocol.entitiesDestroyed(destroyed)
-
     for (const client of clients) {
-      client.reliable?.send(packet)
+      const tick = lastTicks.get(client)
+      const message = protocol.entitiesDestroyed(tick, destroyed)
+
+      client.reliable?.send(encode(message))
     }
   }
 
@@ -72,6 +92,9 @@ export function createNetworkSystem(
     }
 
     const time = Date.now()
+
+    let sendReliable = false
+    let sendUnreliable = false
 
     for (let i = 0; i < updated.length; i++) {
       const entity = updated[i]
@@ -86,8 +109,10 @@ export function createNetworkSystem(
         }
 
         if (config.unreliable) {
+          sendUnreliable = true
           priorityAccumulator.update(component)
         } else {
+          sendReliable = true
           updateReliable.push(component)
         }
       }
@@ -106,16 +131,19 @@ export function createNetworkSystem(
 
     priorityAccumulator.reset()
 
-    const packetReliable = updateReliable.length ? protocol.stateUpdate(updateReliable) : null
-    const packetUnreliable = updateUnreliable.length ? protocol.stateUpdate(updateUnreliable) : null
-
     for (const client of clients) {
-      if (packetReliable) {
-        client.reliable?.send(packetReliable)
+      const tick = lastTicks.get(client)
+
+      if (sendReliable) {
+        const message = protocol.stateUpdate(tick, updateReliable)
+
+        client.reliable?.send(encode(message))
       }
 
-      if (packetUnreliable && eligibleForUnreliable) {
-        client.unreliable?.send(packetUnreliable)
+      if (sendUnreliable && eligibleForUnreliable) {
+        const message = protocol.stateUpdate(tick, updateUnreliable)
+
+        client.unreliable?.send(encode(message))
         lastUnreliableUpdateTime = time
       }
     }

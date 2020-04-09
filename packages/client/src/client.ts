@@ -1,14 +1,17 @@
 import {
-  AnyMessage,
+  CustomMessage,
   Component,
   createEntityAdmin,
   decode,
+  encode,
   Entity,
-  MessageType,
-  EntityAdminOptions,
   EntityAdmin,
+  EntityAdminOptions,
+  Message,
+  MessageType,
+  noop,
 } from "@net-ecs/core"
-import { Client, Connection } from "@web-udp/client"
+import { Client as UdpClient, Connection, Client } from "@web-udp/client"
 import { SESSION_ID } from "./const"
 import { ComponentUpdater } from "./types"
 
@@ -20,22 +23,32 @@ const attemptedToRemoveNonExistentEntityError = new Error(
   "Attempted to remove non-existent entity.",
 )
 
-export type NetEcsClientOptions = {
+export type NetEcsClientOptions<M extends CustomMessage> = {
   url: string
   updaters?: { [componentType: string]: ComponentUpdater<any> }
   world?: EntityAdminOptions
+  network: {
+    onStateUpdate?(components: ReadonlyArray<Component>, client: NetEcsClient): void
+    onServerMessage?(message: M, client: NetEcsClient): void
+    onEntitiesCreated?(entities: ReadonlyArray<Entity>, client: NetEcsClient): void
+  }
 }
 
 function defaultUpdater(world: EntityAdmin, a: object, b: object) {
   return merge(a, b)
 }
 
-export function createNetEcsClient(options: NetEcsClientOptions) {
-  const udp = new Client({ url: options.url })
+export function createNetEcsClient<M extends CustomMessage>(options: NetEcsClientOptions<M>) {
+  const {
+    url,
+    network: { onStateUpdate = noop, onServerMessage = noop, onEntitiesCreated = noop },
+  } = options
+  const udp = new UdpClient({ url })
   const world = createEntityAdmin(options.world)
   const remoteToLocal = new Map<Entity, Entity>()
   const { updaters = {} } = options
 
+  let lastFrameProcessedByServer = 0
   let reliable: Connection | null = null
   let unreliable: Connection | null = null
 
@@ -56,6 +69,8 @@ export function createNetEcsClient(options: NetEcsClientOptions) {
         }
       }
     }
+
+    onStateUpdate(changed, client)
   }
 
   function handleEntitiesCreated(entities: ReadonlyArray<Entity>) {
@@ -65,6 +80,8 @@ export function createNetEcsClient(options: NetEcsClientOptions) {
 
       remoteToLocal.set(remoteEntity, localEntity)
     }
+
+    onEntitiesCreated(entities, client)
   }
 
   function handleEntitiesDestroyed(removed: ReadonlyArray<Entity>) {
@@ -89,22 +106,31 @@ export function createNetEcsClient(options: NetEcsClientOptions) {
     }
   }
 
-  function onMessage(data: ArrayBuffer, source: Connection) {
-    const message = decode(data) as AnyMessage
+  function onMessage(data: ArrayBuffer) {
+    const message = decode(data) as Message
+    const [, , lib, tick] = message
 
-    switch (message[0]) {
-      case MessageType.StateUpdate:
-        handleStateUpdate(message[1])
-        break
-      case MessageType.EntitiesCreated:
-        handleEntitiesCreated(message[1])
-        break
-      case MessageType.EntitiesDestroyed:
-        handleEntitiesDestroyed(message[1])
-        break
-      case MessageType.ComponentRemoved:
-        // handleComponentRemoved(...message[1])
-        break
+    if (tick > lastFrameProcessedByServer) {
+      lastFrameProcessedByServer = tick
+    }
+
+    if (lib) {
+      switch (message[0]) {
+        case MessageType.StateUpdate:
+          handleStateUpdate(message[1])
+          break
+        case MessageType.EntitiesCreated:
+          handleEntitiesCreated(message[1])
+          break
+        case MessageType.EntitiesDestroyed:
+          handleEntitiesDestroyed(message[1])
+          break
+        case MessageType.ComponentRemoved:
+          // handleComponentRemoved(...message[1])
+          break
+      }
+    } else {
+      onServerMessage(message as M, client)
     }
   }
 
@@ -120,6 +146,22 @@ export function createNetEcsClient(options: NetEcsClientOptions) {
     }
   }
 
+  function sendReliable(message: CustomMessage) {
+    if (!reliable) {
+      return false
+    }
+
+    reliable.send(encode(message))
+  }
+
+  function sendUnreliable(message: CustomMessage) {
+    if (!unreliable) {
+      return false
+    }
+
+    unreliable.send(encode(message))
+  }
+
   async function initialize() {
     const sessionId = sessionStorage.getItem(SESSION_ID) ?? Math.random().toString()
 
@@ -133,8 +175,8 @@ export function createNetEcsClient(options: NetEcsClientOptions) {
       metadata: { sessionId, reliable: false },
     })
 
-    reliable.messages.subscribe(message => onMessage(message, reliable))
-    unreliable.messages.subscribe(message => onMessage(message, unreliable))
+    reliable.messages.subscribe(onMessage)
+    unreliable.messages.subscribe(onMessage)
 
     reliable.closed.subscribe(destroy)
     unreliable.closed.subscribe(destroy)
@@ -142,9 +184,19 @@ export function createNetEcsClient(options: NetEcsClientOptions) {
     sessionStorage.setItem(SESSION_ID, sessionId)
   }
 
-  return {
+  const client = {
+    remoteToLocal,
     initialize,
     destroy,
     world,
+    sendReliable,
+    sendUnreliable,
+    get lastFrameProcessedByServer() {
+      return lastFrameProcessedByServer
+    },
   }
+
+  return client
 }
+
+export type NetEcsClient = ReturnType<typeof createNetEcsClient>

@@ -9,6 +9,6 @@ export function createComponentType<
   return definition
 }
 
-export function getComponentType(identifier: ComponentType | Component | string) {
+export function getComponentTypeName(identifier: ComponentType | Component | string) {
   return typeof identifier === "string" ? identifier : identifier.name
 }

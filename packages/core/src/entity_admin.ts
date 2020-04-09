@@ -9,7 +9,7 @@ import { System, SystemQueryResult } from "./system"
 import { Clock } from "./types/clock"
 import { ComponentTypeInitializerArgs } from "./types/util"
 import {
-  getComponentType,
+  getComponentTypeName,
   mutableEmpty,
   mutableRemove,
   mutableRemoveUnordered,
@@ -239,7 +239,7 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
   }
 
   function removeComponent(entity: Entity, identifier: ComponentType | Component | string) {
-    const componentName = getComponentType(identifier)
+    const componentName = getComponentTypeName(identifier)
 
     // No-op if the entity is being deleted.
     if (tags.has(entity, EntityTag.Destroyed)) {
@@ -328,12 +328,17 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     }
   }
 
+  function insertComponent(entity: Entity, component: Component) {
+    tags.setIfNoTag(entity, EntityTag.ComponentsChanged)
+    components.insertComponent(entity, component)
+  }
+
   const {
     getComponent,
     getComponentByType,
     createComponentInstance,
-    insertComponent,
     registerComponentType,
+    getComponentType,
   } = components
 
   config.systems.forEach(addSystem)
