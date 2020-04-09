@@ -34,17 +34,6 @@ const client = createNetEcsClient({
     ],
   },
   network: {
-    // onEntitiesCreated(entities) {
-    //   for (let i = 0; i < entities.length; i++) {
-    //     if (entities[i] === remoteClientEntity) {
-    //       const local = client.remoteToLocal.get(remoteClientEntity)
-
-    //       if (local) {
-    //         client.world.addComponent(local, Movement)
-    //       }
-    //     }
-    //   }
-    // },
     onServerMessage(message: ExampleMessage) {
       switch (message[0]) {
         case ExampleMessageType.ClientEntity:
