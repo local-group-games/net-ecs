@@ -10,7 +10,7 @@ import {
   INTERNAL_$componentAdminComponentTable,
 } from "./internal"
 import { createStackPool, StackPool } from "./pool/stack_pool"
-import { ComponentOfSchema, resetComponentFromSchema, Schema } from "./schema"
+import { resetComponentFromSchema } from "./schema"
 import { initializeComponentFromSchema } from "./schema/schema_utils"
 import { ComponentTypeInitializerArgs } from "./types/util"
 
@@ -27,7 +27,6 @@ export const componentDoesNotExistError = new Error("Component does not exist.")
 export const entityNotRegisteredError = new Error("Entity is not registered.")
 
 export function createComponentAdmin(initialPoolSize: number) {
-  const componentTypes: { [type: string]: ComponentType } = {}
   // Two-dimensional hash of component instances by component type -> entity. Primarily used for
   // quick lookups of components.
   const componentTable: ComponentTable = {}
@@ -66,7 +65,6 @@ export function createComponentAdmin(initialPoolSize: number) {
 
     componentPools[name] = createStackPool(create, release, initialPoolSize)
     componentTable[name] = {}
-    componentTypes[name] = type
   }
 
   /**
@@ -204,26 +202,30 @@ export function createComponentAdmin(initialPoolSize: number) {
     return component
   }
 
-  function getComponentType(type: string) {
-    const componentType = componentTypes[type]
+  function getAllComponents(entity: number) {
+    const components = []
 
-    if (!componentType) {
-      throw componentTypeNotRegistered
+    for (const componentType in componentTable) {
+      const component = componentTable[componentType][entity]
+
+      if (component) {
+        components.push(component)
+      }
     }
 
-    return componentType
+    return components
   }
 
   return {
     createComponentInstance,
     registerComponentType,
-    removeAllComponents,
     addComponent,
     insertComponent,
     removeComponent,
+    removeAllComponents,
     getComponent,
     getComponentByType,
-    getComponentType,
+    getAllComponents,
     // internal
     [INTERNAL_$componentAdminComponentTable]: componentTable,
     [INTERNAL_$componentAdminComponentPools]: componentPools,

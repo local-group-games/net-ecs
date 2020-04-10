@@ -1,13 +1,23 @@
 import { createNetEcsClient } from "@net-ecs/client"
 import { createSystem, Entity, With } from "@net-ecs/core"
 import { mount } from "@net-ecs/debug"
-import { ExampleMessage, ExampleMessageType, Transform } from "@net-ecs/example-server"
+import {
+  ExampleMessage,
+  ExampleMessageType,
+  Transform,
+} from "@net-ecs/example-server"
 import { Color, InterpolationBuffer } from "./components"
 import { ClientInfo } from "./components/component_client_info"
-import { app } from "./graphics"
-import { colorTransition, createInputSystem, interpolation, render } from "./systems"
-import { reconciliation } from "./systems/system_reconciliation"
 import { InputBuffer } from "./components/component_input_buffer"
+import { RenderTransform } from "./components/component_render_transform"
+import { app } from "./graphics"
+import {
+  colorTransition,
+  createInputSystem,
+  interpolation,
+  render,
+} from "./systems"
+import { reconciliation } from "./systems/system_reconciliation"
 
 mount(document.getElementById("ui")!)
 
@@ -24,16 +34,28 @@ const client = createNetEcsClient({
       Color,
       InterpolationBuffer,
       InputBuffer,
+      RenderTransform,
     ],
     systems: [
       // Client
       reconciliation,
-      render,
       colorTransition,
       interpolation,
+      render,
     ],
   },
   network: {
+    onEntitiesCreated(entities, client) {
+      for (let i = 0; i < entities.length; i++) {
+        const entity = entities[i]
+        const transform = client.world.tryGetComponent(entity, Transform)
+
+        if (transform) {
+          client.world.addComponent(entity, InterpolationBuffer)
+          client.world.addComponent(entity, RenderTransform)
+        }
+      }
+    },
     onServerMessage(message: ExampleMessage) {
       switch (message[0]) {
         case ExampleMessageType.ClientEntity:
@@ -52,25 +74,27 @@ const clientInfo = createSystem({
 
     if (
       remoteClientEntity &&
-      remoteClientEntity !== clientInfo.remoteClientEntity &&
-      client.remoteToLocal.get(remoteClientEntity)
+      remoteClientEntity !== clientInfo.remoteClientEntity
     ) {
-      clientInfo.remoteClientEntity = remoteClientEntity
-      clientInfo.localClientEntity = client.remoteToLocal.get(remoteClientEntity)!
-    }
+      const local = client.remoteToLocal.get(remoteClientEntity)!
 
-    clientInfo.lastFrameProcessedByServer = client.lastFrameProcessedByServer
+      if (local) {
+        clientInfo.remoteClientEntity = remoteClientEntity
+        clientInfo.localClientEntity = local
+      }
+    }
   },
 })
 
 async function main() {
   const input = createInputSystem(client)
 
+  client.world.createSingletonComponent(ClientInfo)
+  client.world.createSingletonComponent(InputBuffer)
+
   client.world.addSystem(input)
   client.world.addSystem(clientInfo)
-  client.world.createSingletonComponent(ClientInfo)
   client.world.createSingletonComponent(Color)
-  client.world.createSingletonComponent(InputBuffer)
 
   app.ticker.add(() => client.world.tick(app.ticker.deltaMS / 1000))
   ;(window as any).world = client.world

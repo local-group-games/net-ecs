@@ -1,8 +1,8 @@
-import { encode, protocol as coreProtocol } from "@net-ecs/core"
+import { encode } from "@net-ecs/core"
 import { createNetEcsServer, NetEcsServerClient } from "@net-ecs/server"
 import { Transform } from "./components"
-import { ExampleMessage, ExampleMessageType, protocol } from "./protocol"
 import { applyInput } from "./helpers"
+import { ExampleMessage, ExampleMessageType, protocol } from "./protocol"
 
 export * from "./components"
 export * from "./helpers"
@@ -23,20 +23,14 @@ export function createNetEcsExampleServer() {
           unreliable: true,
         },
       },
-      unreliableSendRate: (1 / 20) * 1000,
+      unreliableSendRate: (1 / 1) * 1000,
       unreliableUpdateSize: 1000,
       onClientConnect(client, world) {
         const entity = world.createEntity()
-        const transform = world.addComponent(entity, Transform)
 
-        if (transform) {
-          entitiesByClient.set(client, entity)
-
-          client.reliable.send(encode(protocol.clientEntity(-1, entity)))
-          setTimeout(() => {
-            client.reliable.send(encode(coreProtocol.stateUpdate(world.clock.tick, [transform])))
-          }, 100)
-        }
+        world.addComponent(entity, Transform)
+        entitiesByClient.set(client, entity)
+        client.reliable.send(encode(protocol.clientEntity(-1, entity)))
       },
       onClientDisconnect(client, world) {
         const entity = entitiesByClient.get(client)
@@ -55,7 +49,6 @@ export function createNetEcsExampleServer() {
           case ExampleMessageType.Move:
             const data = message[1]
             const transform = world.getMutableComponent(entity, Transform)
-
             applyInput(data, transform)
             break
         }

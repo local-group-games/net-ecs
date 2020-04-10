@@ -1,6 +1,6 @@
 import { createSystem, With } from "@net-ecs/core"
 import { Color } from "../components"
-import { InterpolationBuffer } from "../components/component_interpolation_buffer"
+import { RenderTransform } from "../components/component_render_transform"
 import { app, framerate, graphics } from "../graphics"
 
 function fromRGBto32(r: number, g: number, b: number) {
@@ -14,7 +14,7 @@ function fromRGBto32(r: number, g: number, b: number) {
 
 export const render = createSystem({
   name: "render",
-  query: [[With(Color)], [With(InterpolationBuffer)]],
+  query: [[With(Color)], [With(RenderTransform)]],
   execute(world, [color], entities) {
     const { r, g, b } = world.getComponent(color, Color)
     const color32 = fromRGBto32(r, g, b)
@@ -27,7 +27,7 @@ export const render = createSystem({
 
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
-      const { x, y } = world.getComponent(entity, InterpolationBuffer)
+      const { x, y } = world.getComponent(entity, RenderTransform)
 
       graphics.lineStyle(1, color32)
       graphics.drawCircle(x, y, 4)

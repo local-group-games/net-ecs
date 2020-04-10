@@ -338,7 +338,7 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     getComponentByType,
     createComponentInstance,
     registerComponentType,
-    getComponentType,
+    getAllComponents,
   } = components
 
   config.systems.forEach(addSystem)
@@ -360,6 +360,7 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     getComponent,
     getComponentByType,
     getMutableComponent,
+    getAllComponents,
     tryGetComponent,
     tryGetComponentByType,
     tryGetMutableComponent,

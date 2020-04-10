@@ -1,9 +1,9 @@
 import { NetEcsClient } from "@net-ecs/client"
 import { createSystem, With } from "@net-ecs/core"
-import { InputData, protocol, applyInput } from "@net-ecs/example-server"
-import { InterpolationBuffer } from "../components"
+import { applyInput, InputData, protocol } from "@net-ecs/example-server"
 import { ClientInfo } from "../components/component_client_info"
 import { InputBuffer } from "../components/component_input_buffer"
+import { RenderTransform } from "../components/component_render_transform"
 
 export function createInputSystem(client: NetEcsClient) {
   const keyMap: { [key: string]: boolean } = {
@@ -39,23 +39,22 @@ export function createInputSystem(client: NetEcsClient) {
         world.clock.step,
       ]
 
-      let send = false
-
       if (localClientEntity) {
-        const interp = world.tryGetMutableComponent(localClientEntity, InterpolationBuffer)
+        const renderTransform = world.tryGetMutableComponent(
+          localClientEntity,
+          RenderTransform,
+        )
 
-        if (interp) {
+        if (renderTransform) {
           // Do client-side prediction.
-          send = applyInput(input, interp)
+          applyInput(input, renderTransform)
         }
       }
 
-      if (send) {
-        const { buffer } = world.getComponent(inputBuffer, InputBuffer)
+      const { buffer } = world.getComponent(inputBuffer, InputBuffer)
 
-        buffer.push(input)
-        client.sendUnreliable(protocol.move(tick, input))
-      }
+      buffer.push(input)
+      client.sendUnreliable(protocol.move(tick, input))
     },
   })
 

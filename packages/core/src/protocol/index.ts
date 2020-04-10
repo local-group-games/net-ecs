@@ -41,7 +41,7 @@ export const protocol = {
   ),
   entitiesCreated: createMessageHelper(
     MessageType.EntitiesCreated,
-    (payload: ReadonlyArray<Entity>) => payload,
+    (payload: ReadonlyArray<Entity | Component>) => payload,
     true,
   ),
   entitiesDestroyed: createMessageHelper(

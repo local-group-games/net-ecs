@@ -5,6 +5,5 @@ export const ClientInfo = createComponentType({
   schema: {
     localClientEntity: number,
     remoteClientEntity: number,
-    lastFrameProcessedByServer: number,
   },
 })

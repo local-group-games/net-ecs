@@ -4,7 +4,7 @@ module.exports = {
   bracketSpacing: true,
   insertPragma: false,
   jsxBracketSameLine: false,
-  printWidth: 100,
+  printWidth: 80,
   proseWrap: "preserve",
   requirePragma: false,
   semi: false,

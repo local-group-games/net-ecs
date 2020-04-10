@@ -1,9 +1,9 @@
 export type SignalSubscriber<E> = (event: E) => any
 
-export class Signal<T = any, T2 = void> {
+export class Signal<T = any> {
   private subscribers: SignalSubscriber<T>[] = []
 
-  dispatch(t: T, t2: T2) {
+  dispatch(t: T) {
     setTimeout(() => {
       for (const subscriber of this.subscribers) {
         subscriber(t)

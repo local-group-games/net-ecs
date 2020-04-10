@@ -10,10 +10,13 @@ import {
   Message,
   MessageType,
   noop,
+  createSystem,
+  With,
 } from "@net-ecs/core"
 import { Client as UdpClient, Connection, Client } from "@web-udp/client"
 import { SESSION_ID } from "./const"
 import { ComponentUpdater } from "./types"
+import { ServerInfo } from "./components"
 
 function merge(...objects: object[]) {
   return objects.reduce(Object.assign)
@@ -44,9 +47,24 @@ export function createNetEcsClient<M extends CustomMessage>(options: NetEcsClien
     network: { onStateUpdate = noop, onServerMessage = noop, onEntitiesCreated = noop },
   } = options
   const udp = new UdpClient({ url })
-  const world = createEntityAdmin(options.world)
+  const serverInfo = createSystem({
+    name: "server_info",
+    query: [[With(ServerInfo)]],
+    execute(world, [entity]) {
+      const serverInfo = world.getComponent(entity, ServerInfo)
+
+      serverInfo.lastRegisteredClientTick = client.lastFrameProcessedByServer
+    },
+  })
+  const world = createEntityAdmin({
+    ...options.world,
+    componentTypes: [ServerInfo, ...options.world?.componentTypes],
+    systems: [serverInfo, ...options.world?.systems],
+  })
   const remoteToLocal = new Map<Entity, Entity>()
   const { updaters = {} } = options
+
+  world.createSingletonComponent(ServerInfo)
 
   let lastFrameProcessedByServer = 0
   let reliable: Connection | null = null
@@ -73,12 +91,20 @@ export function createNetEcsClient<M extends CustomMessage>(options: NetEcsClien
     onStateUpdate(changed, client)
   }
 
-  function handleEntitiesCreated(entities: ReadonlyArray<Entity>) {
-    for (let i = 0; i < entities.length; i++) {
-      const remoteEntity = entities[i]
-      const localEntity = world.createEntity()
+  function handleEntitiesCreated(entries: ReadonlyArray<Entity | Component>) {
+    const entities: Entity[] = []
+    let entity: Entity
 
-      remoteToLocal.set(remoteEntity, localEntity)
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i]
+
+      if (typeof entry === "number") {
+        entity = world.createEntity()
+        entities.push(entity)
+        remoteToLocal.set(entry, entity)
+      } else {
+        world.insertComponent(entity, entry)
+      }
     }
 
     onEntitiesCreated(entities, client)
