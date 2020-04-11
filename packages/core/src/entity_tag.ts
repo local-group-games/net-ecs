@@ -2,7 +2,7 @@ export enum EntityTag {
   Without,
   With,
   Created,
-  Destroyed,
+  Deleted,
   Changed,
   ComponentsChanged,
 }

@@ -21,6 +21,6 @@ function createSelector(tag: EntityTag) {
 export const Without = createSelector(EntityTag.Without)
 export const With = createSelector(EntityTag.With)
 export const Created = createSelector(EntityTag.Created)
-export const Destroyed = createSelector(EntityTag.Destroyed)
+export const Destroyed = createSelector(EntityTag.Deleted)
 export const Changed = createSelector(EntityTag.Changed)
 export const ComponentsChanged = createSelector(EntityTag.Changed)

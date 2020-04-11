@@ -1,17 +1,15 @@
-export type SignalSubscriber<E> = (event: E) => any
+export type SignalSubscriber<T, T2> = (t1: T, t2: T2) => any
 
-export class Signal<T = any> {
-  private subscribers: SignalSubscriber<T>[] = []
+export class Signal<T = void, T2 = void> {
+  private subscribers: SignalSubscriber<T, T2>[] = []
 
-  dispatch(t: T) {
-    setTimeout(() => {
-      for (const subscriber of this.subscribers) {
-        subscriber(t)
-      }
-    }, 0)
+  dispatch(t: T, t2: T2) {
+    for (const subscriber of this.subscribers) {
+      subscriber(t, t2)
+    }
   }
 
-  subscribe(subscriber: SignalSubscriber<T>) {
+  subscribe(subscriber: SignalSubscriber<T, T2>) {
     if (this.subscribers.includes(subscriber)) {
       return
     }
@@ -19,7 +17,7 @@ export class Signal<T = any> {
     this.subscribers.push(subscriber)
   }
 
-  unsubscribe(subscriber: SignalSubscriber<T>) {
+  unsubscribe(subscriber: SignalSubscriber<T, T2>) {
     const index = this.subscribers.indexOf(subscriber)
 
     if (index < 0) {
@@ -29,9 +27,9 @@ export class Signal<T = any> {
     this.subscribers.splice(index, 1)
   }
 
-  once(subscriber: SignalSubscriber<T>) {
-    const onceSubscriber = (t: T) => {
-      subscriber(t)
+  once(subscriber: SignalSubscriber<T, T2>) {
+    const onceSubscriber = (t: T, t2: T2) => {
+      subscriber(t, t2)
       this.unsubscribe(onceSubscriber)
     }
 

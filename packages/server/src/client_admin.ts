@@ -1,19 +1,27 @@
-import { decode, Message, noop, EntityAdmin } from "@net-ecs/core"
-import { Connection, NetEcsServerClient, NetEcsServerNetworkOptions } from "./types"
+import { decode, EntityAdmin, Message, Entity } from "@net-ecs/core"
+import { Connection, ServerClient } from "./types"
 
-export interface NetEcsClientAdmin {
-  [Symbol.iterator]: () => Generator<NetEcsServerClient>
-  registerConnection(connection: Connection): void
-  messages: (client: NetEcsServerClient) => Generator<Message>
+export type ClientAdmin = {
+  [Symbol.iterator]: () => Generator<ServerClient>
+  handleConnection(connection: Connection): void
 }
 
-export function createClientAdmin(
-  world: EntityAdmin,
-  options: NetEcsServerNetworkOptions,
-): NetEcsClientAdmin {
-  const { onClientConnect = noop, onConnectionError = noop, onClientDisconnect = noop } = options
-  const clients: NetEcsServerClient[] = []
-  const messages = new WeakMap<NetEcsServerClient, Message[]>()
+export type ClientAdminOptions = {
+  onConnectionError: (event: { error: string }) => void
+  onClientConnect: (client: ServerClient) => void
+  onClientDisconnect: (client: ServerClient) => void
+  onClientMessage: (client: ServerClient, message: Message) => void
+}
+
+export function createClientAdmin(options: ClientAdminOptions): ClientAdmin {
+  const {
+    onClientConnect,
+    onConnectionError,
+    onClientDisconnect,
+    onClientMessage,
+  } = options
+  const connecting: ServerClient[] = []
+  const clients: ServerClient[] = []
 
   function registerConnection(connection: Connection) {
     const { metadata } = connection
@@ -22,7 +30,9 @@ export function createClientAdmin(
       throw new Error()
     }
 
-    let client = clients.find(client => client.sessionId === metadata.sessionId)
+    let client = connecting.find(
+      client => client.sessionId === metadata.sessionId,
+    )
 
     if (!client) {
       client = {
@@ -31,9 +41,17 @@ export function createClientAdmin(
         unreliable: null,
         initialized: false,
       }
-      clients.push(client)
-      messages.set(client, [])
+      connecting.push(client)
     }
+
+    connection.closed.subscribe(() => onClientDisconnect(client))
+    connection.messages.subscribe(data =>
+      onClientMessage(client, decode(data) as Message),
+    )
+    connection.errors.subscribe(onConnectionError)
+    connection.closed.subscribe(() => {
+      clients.splice(clients.indexOf(client), 1)
+    })
 
     if (metadata.reliable) {
       client.reliable = connection
@@ -42,20 +60,10 @@ export function createClientAdmin(
     }
 
     if (client.reliable && client.unreliable) {
-      onClientConnect(client, world)
+      onClientConnect(client)
+      connecting.splice(connecting.indexOf(client), 1)
+      clients.push(client)
     }
-
-    connection.closed.subscribe(() => onClientDisconnect(client, world))
-    connection.messages.subscribe(data => {
-      const message = decode(data) as Message
-      const buffer = messages.get(client)!
-
-      buffer.push(message)
-    })
-    connection.errors.subscribe(onConnectionError)
-    connection.closed.subscribe(() => {
-      clients.splice(clients.indexOf(client), 1)
-    })
   }
 
   return {
@@ -64,14 +72,6 @@ export function createClientAdmin(
         yield clients[i]
       }
     },
-    *messages(client: NetEcsServerClient) {
-      const buffer = messages.get(client)
-      let message: Message
-
-      while ((message = buffer.pop())) {
-        yield message
-      }
-    },
-    registerConnection,
+    handleConnection: registerConnection,
   }
 }

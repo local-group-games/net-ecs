@@ -15,6 +15,7 @@ import {
   mutableRemoveUnordered,
   viewEntityAdmin,
 } from "./util"
+import { Signal } from "./signal"
 
 export type EntityAdminConfig = {
   initialPoolSize: number
@@ -39,14 +40,18 @@ enum ComponentTag {
 const systemNotRegisteredError = new Error("System has not been registered.")
 const systemAlreadyRegisteredError = new Error("System was already registered.")
 
-export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) {
+export function createEntityAdmin(
+  options: EntityAdminOptions = defaultOptions,
+) {
   const config: EntityAdminConfig = Object.assign({}, defaultOptions, options)
   const clock: Clock = {
     step: -1,
     tick: -1,
     time: 0,
   }
-
+  const signals = {
+    preTick: new Signal<void>(),
+  }
   const systems: System[] = []
   const entities: Entity[] = []
   const components = createComponentAdmin(config.initialPoolSize)
@@ -166,7 +171,7 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     componentsByTag[ComponentTag.Changed].clear()
 
     // Release deleted entities' components before updating their queries.
-    for (const entity of tags[EntityTag.Destroyed]) {
+    for (const entity of tags[EntityTag.Deleted]) {
       components.removeAllComponents(entity)
     }
 
@@ -175,6 +180,8 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
       updateAllQueriesForEntity(entity)
       touchedEntities.push(entity)
     }
+
+    signals.preTick.dispatch()
 
     tags.reset()
 
@@ -217,7 +224,7 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     }
 
     mutableRemoveUnordered(entities, entity)
-    tags.set(entity, EntityTag.Destroyed)
+    tags.set(entity, EntityTag.Deleted)
 
     return entity
   }
@@ -227,7 +234,7 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     type: F,
     ...args: ComponentTypeInitializerArgs<F>
   ) {
-    if (tags.has(entity, EntityTag.Destroyed) || !entities.includes(entity)) {
+    if (tags.has(entity, EntityTag.Deleted) || !entities.includes(entity)) {
       return false
     }
 
@@ -238,11 +245,14 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     return component as ComponentOf<F>
   }
 
-  function removeComponent(entity: Entity, identifier: ComponentType | Component | string) {
+  function removeComponent(
+    entity: Entity,
+    identifier: ComponentType | Component | string,
+  ) {
     const componentName = getComponentTypeName(identifier)
 
     // No-op if the entity is being deleted.
-    if (tags.has(entity, EntityTag.Destroyed)) {
+    if (tags.has(entity, EntityTag.Deleted)) {
       return false
     }
 
@@ -250,7 +260,10 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     tags.setIfNoTag(entity, EntityTag.ComponentsChanged)
   }
 
-  function getMutableComponent<F extends ComponentType>(entity: Entity, type: F): ComponentOf<F> {
+  function getMutableComponent<F extends ComponentType>(
+    entity: Entity,
+    type: F,
+  ): ComponentOf<F> {
     const component = components.getComponent(entity, type)
 
     tags.setIfNoTag(entity, EntityTag.Changed)
@@ -268,7 +281,10 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     return component
   }
 
-  function tryGetMutableComponent<F extends ComponentType>(entity: Entity, type: F) {
+  function tryGetMutableComponent<F extends ComponentType>(
+    entity: Entity,
+    type: F,
+  ) {
     try {
       return getMutableComponent(entity, type)
     } catch {
@@ -345,11 +361,14 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
   config.componentTypes.forEach(registerComponentType)
 
   const entityAdmin = {
+    // fields
     entities: entities as ReadonlyArray<Entity>,
+    tags,
+    clock,
+    // functions
     addSystem,
     removeSystem,
     isSystemRegistered,
-    clock,
     tick,
     hasEntity,
     createEntity,
@@ -371,6 +390,8 @@ export function createEntityAdmin(options: EntityAdminOptions = defaultOptions) 
     registerComponentType,
     view,
     isChangedComponent,
+    // signals
+    ...signals,
     // internal
     [Internal.INTERNAL_$entityAdminEntities]: entities,
     [Internal.INTERNAL_$entityAdminSystems]: systems,

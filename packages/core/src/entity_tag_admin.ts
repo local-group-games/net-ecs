@@ -6,7 +6,7 @@ export function createEntityTagAdmin() {
     [EntityTag.Created]: new Set<Entity>(),
     [EntityTag.ComponentsChanged]: new Set<Entity>(),
     [EntityTag.Changed]: new Set<Entity>(),
-    [EntityTag.Destroyed]: new Set<Entity>(),
+    [EntityTag.Deleted]: new Set<Entity>(),
   }
   const tagsByEntity = new Map<Entity, EntityTag>()
   const changed = new Set<Entity>()
@@ -55,7 +55,7 @@ export function createEntityTagAdmin() {
 
   function reset() {
     tags[EntityTag.Created].clear()
-    tags[EntityTag.Destroyed].clear()
+    tags[EntityTag.Deleted].clear()
     tags[EntityTag.Changed].clear()
     tags[EntityTag.ComponentsChanged].clear()
     tagsByEntity.clear()

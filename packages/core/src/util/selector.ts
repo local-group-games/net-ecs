@@ -6,7 +6,7 @@ export function getReadableSelectorTypeName(selectorType: EntityTag) {
       return "Created"
     case EntityTag.Changed:
       return "Changed"
-    case EntityTag.Destroyed:
+    case EntityTag.Deleted:
       return "Destroyed"
     case EntityTag.With:
       return "With"

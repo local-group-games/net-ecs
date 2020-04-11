@@ -31,9 +31,15 @@ export type NetEcsClientOptions<M extends CustomMessage> = {
   updaters?: { [componentType: string]: ComponentUpdater<any> }
   world?: EntityAdminOptions
   network: {
-    onStateUpdate?(components: ReadonlyArray<Component>, client: NetEcsClient): void
+    onStateUpdate?(
+      components: ReadonlyArray<Component>,
+      client: NetEcsClient,
+    ): void
     onServerMessage?(message: M, client: NetEcsClient): void
-    onEntitiesCreated?(entities: ReadonlyArray<Entity>, client: NetEcsClient): void
+    onEntitiesCreated?(
+      entities: ReadonlyArray<Entity>,
+      client: NetEcsClient,
+    ): void
   }
 }
 
@@ -41,10 +47,16 @@ function defaultUpdater(world: EntityAdmin, a: object, b: object) {
   return merge(a, b)
 }
 
-export function createNetEcsClient<M extends CustomMessage>(options: NetEcsClientOptions<M>) {
+export function createNetEcsClient<M extends CustomMessage>(
+  options: NetEcsClientOptions<M>,
+) {
   const {
     url,
-    network: { onStateUpdate = noop, onServerMessage = noop, onEntitiesCreated = noop },
+    network: {
+      onStateUpdate = noop,
+      onServerMessage = noop,
+      onEntitiesCreated = noop,
+    },
   } = options
   const udp = new UdpClient({ url })
   const serverInfo = createSystem({
@@ -78,7 +90,10 @@ export function createNetEcsClient<M extends CustomMessage>(options: NetEcsClien
 
       // May have not recieved an EntityCreatedMessage yet.
       if (localEntity) {
-        const localComponent = world.tryGetMutableComponentByType(localEntity, remoteComponent.name)
+        const localComponent = world.tryGetMutableComponentByType(
+          localEntity,
+          remoteComponent.name,
+        )
 
         if (localComponent) {
           updater(world, localComponent, remoteComponent)
@@ -110,7 +125,7 @@ export function createNetEcsClient<M extends CustomMessage>(options: NetEcsClien
     onEntitiesCreated(entities, client)
   }
 
-  function handleEntitiesDestroyed(removed: ReadonlyArray<Entity>) {
+  function handleEntitiesDeleted(removed: ReadonlyArray<Entity>) {
     for (let i = 0; i < removed.length; i++) {
       const remoteEntity = removed[i]
       const localEntity = remoteToLocal.get(remoteEntity)
@@ -148,8 +163,8 @@ export function createNetEcsClient<M extends CustomMessage>(options: NetEcsClien
         case MessageType.EntitiesCreated:
           handleEntitiesCreated(message[1])
           break
-        case MessageType.EntitiesDestroyed:
-          handleEntitiesDestroyed(message[1])
+        case MessageType.EntitiesDeleted:
+          handleEntitiesDeleted(message[1])
           break
         case MessageType.ComponentRemoved:
           // handleComponentRemoved(...message[1])
@@ -189,7 +204,8 @@ export function createNetEcsClient<M extends CustomMessage>(options: NetEcsClien
   }
 
   async function initialize() {
-    const sessionId = sessionStorage.getItem(SESSION_ID) ?? Math.random().toString()
+    const sessionId =
+      sessionStorage.getItem(SESSION_ID) ?? Math.random().toString()
 
     reliable = await udp.connect({
       binaryType: "arraybuffer",

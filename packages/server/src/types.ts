@@ -9,29 +9,25 @@ export type PriorityConfig = {
   }
 }
 
-export type Connection = Server["connections"] extends Signal<infer _> ? _ : never
+export type Connection = Server["connections"] extends Signal<infer _>
+  ? _
+  : never
 export type Metadata = { sessionId: string; reliable: boolean }
 
-export type NetEcsServerClient = {
+export type ServerClient = {
   sessionId: string
-  reliable: Connection | null
-  unreliable: Connection | null
+  reliable: Connection
+  unreliable: Connection
   initialized: boolean
 }
 
-export type NetEcsServerNetworkOptions<
-  M extends CustomMessage<number, any> = CustomMessage<number, any>
-> = {
+export type NetworkOptions = {
   priorities: PriorityConfig
   unreliableUpdateSize: number
   unreliableSendRate: number
-  onConnectionError?: (event: { error: string }) => void
-  onClientConnect?: (client: NetEcsServerClient, world: EntityAdmin) => void
-  onClientDisconnect?: (client: NetEcsServerClient, world: EntityAdmin) => void
-  onClientMessage?: (message: M, client: NetEcsServerClient, world: EntityAdmin) => void
 }
 
 export type NetEcsServerOptions = {
-  network: NetEcsServerNetworkOptions
+  network: NetworkOptions
   world?: EntityAdminOptions
 }
