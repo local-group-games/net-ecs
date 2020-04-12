@@ -2,12 +2,16 @@ import {
   createCustomMessageHelper,
   Entity,
   ExtractProtocolMessageTypes,
+  CustomMessage,
 } from "@net-ecs/core"
 import { InputData } from "../types"
 
 export enum ExampleMessageType {
+  // client
   Move,
   ClientEntity,
+  // server
+  ServerInfo,
 }
 
 export const protocol = {
@@ -18,6 +22,10 @@ export const protocol = {
   ),
 
   // Server
+  serverInfo: createCustomMessageHelper(
+    ExampleMessageType.ServerInfo,
+    (tickRate: number, sendRate: number) => ({ tickRate, sendRate }),
+  ),
   clientEntity: createCustomMessageHelper(
     ExampleMessageType.ClientEntity,
     (entity: Entity) => entity,

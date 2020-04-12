@@ -9,8 +9,12 @@ export * from "./helpers"
 export * from "./protocol"
 export * from "./types"
 
+const TICK_RATE = 60
+const SEND_RATE = 20
+
 export function createNetEcsExampleServer() {
   const entitiesByClient = new WeakMap<ServerClient, number>()
+  const inputSequenceByClient = new WeakMap<ServerClient, number>()
   const server = createNetEcsServer<ExampleMessage>({
     world: {
       systems: [],
@@ -23,9 +27,12 @@ export function createNetEcsExampleServer() {
           unreliable: true,
         },
       },
-      unreliableSendRate: (1 / 1) * 1000,
+      unreliableSendRate: (1 / SEND_RATE) * 1000,
       unreliableUpdateSize: 1000,
     },
+    getClientStateUpdateMetadata: client => ({
+      seq: inputSequenceByClient.get(client),
+    }),
   })
 
   function onClientConnect(client: ServerClient) {
@@ -33,7 +40,8 @@ export function createNetEcsExampleServer() {
 
     server.world.addComponent(entity, Transform)
     entitiesByClient.set(client, entity)
-    client.reliable.send(encode(protocol.clientEntity(-1, entity)))
+    client.reliable.send(encode(protocol.clientEntity(entity)))
+    client.reliable.send(encode(protocol.serverInfo(TICK_RATE, SEND_RATE)))
   }
 
   function onClientDisconnect(client: ServerClient) {
@@ -52,9 +60,10 @@ export function createNetEcsExampleServer() {
 
     switch (message[0]) {
       case ExampleMessageType.Move:
-        const data = message[1]
+        const input = message[1]
         const transform = server.world.getMutableComponent(entity, Transform)
-        applyInput(data, transform)
+        applyInput(input, transform)
+        inputSequenceByClient.set(client, input[4])
         break
     }
   }
@@ -63,5 +72,16 @@ export function createNetEcsExampleServer() {
   server.clientDisconnected.subscribe(onClientDisconnect)
   server.clientMessageReceived.subscribe(onClientMessage)
 
-  return server
+  let previousTime = 0
+
+  function start(port: number) {
+    setInterval(() => {
+      const time = Date.now()
+      server.world.tick(time - previousTime)
+      previousTime = time
+    }, (1 / TICK_RATE) * 1000)
+    server.listen(port)
+  }
+
+  return { start }
 }

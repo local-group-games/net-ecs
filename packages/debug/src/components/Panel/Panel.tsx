@@ -7,9 +7,14 @@ const PanelTitle = styled.header`
   color: #f1f1f1;
 `
 
-const PanelContent = styled.div`
+const PanelContentFill = styled.div`
+  display: flex;
   padding: 10px;
+`
+
+const PanelContentGrid = styled.div`
   display: grid;
+  padding: 10px;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   grid-auto-rows: minmax(auto, auto);
   grid-auto-flow: dense;
@@ -21,8 +26,8 @@ const PanelWrapper = styled.section`
   font-family: "Iosevka", monospace;
   background-color: #1f2527;
   color: #9da9b1;
-  height: 100%;
   overflow: scroll;
+  flex: 1;
 
   ul {
     list-style-type: none;
@@ -62,11 +67,27 @@ const PanelWrapper = styled.section`
   }
 `
 
-export function Panel(props: ComponentProps<typeof PanelWrapper> & { title: string }) {
+export enum PanelMode {
+  Fill = "fill",
+  Grid = "grid",
+}
+
+export function Panel(
+  props: ComponentProps<typeof PanelWrapper> & {
+    title: string
+    mode?: PanelMode
+  },
+) {
+  const { mode = PanelMode.Grid, title, children } = props
+
   return (
     <PanelWrapper>
-      <PanelTitle>{props.title}</PanelTitle>
-      <PanelContent>{props.children}</PanelContent>
+      <PanelTitle>{title}</PanelTitle>
+      {mode === PanelMode.Grid ? (
+        <PanelContentGrid>{children}</PanelContentGrid>
+      ) : (
+        <PanelContentFill>{children}</PanelContentFill>
+      )}
     </PanelWrapper>
   )
 }

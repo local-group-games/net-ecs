@@ -1,24 +1,25 @@
 import { Changed, createSystem, With } from "@net-ecs/core"
 import { Transform } from "@net-ecs/example-server"
-import { ClientInfo } from "../components/component_client_info"
+import { ExampleServerInfo } from "../components/component_example_server_info"
 import { InterpolationBuffer } from "../components/component_interpolation_buffer"
 import { RenderTransform } from "../components/component_render_transform"
-
-const sendRate = 1
 
 export const interpolation = createSystem({
   name: "interpolation",
   query: [
-    [With(ClientInfo)],
+    [With(ExampleServerInfo)],
     // Transforms modified by server state update
     [Changed(Transform)],
     // Entities to interpolate
     [With(InterpolationBuffer)],
   ],
   execute(world, [clientInfo], transforms, buffers) {
-    const { localClientEntity } = world.getComponent(clientInfo, ClientInfo)
-    const timeMs = world.clock.time * 1000
-    const renderTime = timeMs - 1000 / sendRate
+    const { time } = world.clock
+    const { localClientEntity, sendRate } = world.getComponent(
+      clientInfo,
+      ExampleServerInfo,
+    )
+    const renderTime = time - 1000 / sendRate
 
     for (let i = 0; i < transforms.length; i++) {
       const entity = transforms[i]
@@ -31,7 +32,7 @@ export const interpolation = createSystem({
         renderTransform.y = transform.y
       } else {
         // Insert new update into buffer.
-        buffer.positions.push([timeMs, transform.x, transform.y])
+        buffer.positions.push([time, transform.x, transform.y])
       }
     }
 
@@ -51,7 +52,11 @@ export const interpolation = createSystem({
         updates.shift()
       }
 
-      if (updates.length >= 2 && updates[0][0] <= renderTime && renderTime <= updates[1][0]) {
+      if (
+        updates.length >= 2 &&
+        updates[0][0] <= renderTime &&
+        renderTime <= updates[1][0]
+      ) {
         const [[t0, x0, y0], [t1, x1, y1]] = updates
 
         // Interpolate position.

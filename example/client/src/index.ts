@@ -6,22 +6,22 @@ import {
   ExampleMessageType,
   Transform,
 } from "@net-ecs/example-server"
-import { Color, InterpolationBuffer } from "./components"
-import { ClientInfo } from "./components/component_client_info"
-import { InputBuffer } from "./components/component_input_buffer"
-import { RenderTransform } from "./components/component_render_transform"
+import {
+  Color,
+  ExampleServerInfo,
+  InputBuffer,
+  InterpolationBuffer,
+  RenderTransform,
+} from "./components"
 import { app } from "./graphics"
 import {
   colorTransition,
   createInputSystem,
   interpolation,
+  reconciliation,
   render,
 } from "./systems"
-import { reconciliation } from "./systems/system_reconciliation"
-
-mount(document.getElementById("ui")!)
-
-let remoteClientEntity: Entity | null = null
+import { debug } from "./debug"
 
 const client = createNetEcsClient({
   url: "ws://localhost:9000",
@@ -30,7 +30,7 @@ const client = createNetEcsClient({
       // Core
       Transform,
       // Client
-      ClientInfo,
+      ExampleServerInfo,
       Color,
       InterpolationBuffer,
       InputBuffer,
@@ -46,6 +46,7 @@ const client = createNetEcsClient({
   },
   network: {
     onEntitiesCreated(entities, client) {
+      debug.log.info(`entities created: ${entities.join(", ")}`)
       for (let i = 0; i < entities.length; i++) {
         const entity = entities[i]
         const transform = client.world.tryGetComponent(entity, Transform)
@@ -56,9 +57,19 @@ const client = createNetEcsClient({
         }
       }
     },
+    onStateUpdate() {
+      // debug.log.info("update", { id: "state_update", duration: 10000 })
+    },
     onServerMessage(message: ExampleMessage) {
       switch (message[0]) {
+        case ExampleMessageType.ServerInfo:
+          debug.log.info(
+            `server info: sendRate=${message[1].sendRate}, tickRate=${message[1].tickRate}`,
+          )
+          serverInfo = message[1]
+          break
         case ExampleMessageType.ClientEntity:
+          debug.log.info(`client entity: ${message[1]}`)
           remoteClientEntity = message[1]
           break
       }
@@ -66,21 +77,33 @@ const client = createNetEcsClient({
   },
 })
 
-const clientInfo = createSystem({
-  name: "client_info",
-  query: [[With(ClientInfo)]],
+debug.attach(client.world)
+
+let serverInfo: { sendRate: number; tickRate: number } | null = null
+let remoteClientEntity: Entity | null = null
+
+const exampleServerInfo = createSystem({
+  name: "example_server_info",
+  query: [[With(ExampleServerInfo)]],
   execute(world, [entity]) {
-    const clientInfo = world.getMutableComponent(entity, ClientInfo)
+    const exampleServerInfo = world.getMutableComponent(
+      entity,
+      ExampleServerInfo,
+    )
+
+    if (serverInfo && !exampleServerInfo.tickRate) {
+      Object.assign(exampleServerInfo, serverInfo)
+    }
 
     if (
       remoteClientEntity &&
-      remoteClientEntity !== clientInfo.remoteClientEntity
+      remoteClientEntity !== exampleServerInfo.remoteClientEntity
     ) {
       const local = client.remoteToLocal.get(remoteClientEntity)!
 
       if (local) {
-        clientInfo.remoteClientEntity = remoteClientEntity
-        clientInfo.localClientEntity = local
+        exampleServerInfo.remoteClientEntity = remoteClientEntity
+        exampleServerInfo.localClientEntity = local
       }
     }
   },
@@ -89,17 +112,19 @@ const clientInfo = createSystem({
 async function main() {
   const input = createInputSystem(client)
 
-  client.world.createSingletonComponent(ClientInfo)
+  client.world.createSingletonComponent(ExampleServerInfo)
   client.world.createSingletonComponent(InputBuffer)
 
   client.world.addSystem(input)
-  client.world.addSystem(clientInfo)
+  client.world.addSystem(exampleServerInfo)
   client.world.createSingletonComponent(Color)
 
-  app.ticker.add(() => client.world.tick(app.ticker.deltaMS / 1000))
+  app.ticker.add(() => client.world.tick(app.ticker.deltaMS))
   ;(window as any).world = client.world
 
+  debug.log.info("connecting to master server")
   await client.initialize()
+  debug.log.info("connected to master server")
 }
 
 main()

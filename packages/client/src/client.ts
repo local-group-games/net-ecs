@@ -12,6 +12,7 @@ import {
   noop,
   createSystem,
   With,
+  NetEcsMessage,
 } from "@net-ecs/core"
 import { Client as UdpClient, Connection, Client } from "@web-udp/client"
 import { SESSION_ID } from "./const"
@@ -63,9 +64,8 @@ export function createNetEcsClient<M extends CustomMessage>(
     name: "server_info",
     query: [[With(ServerInfo)]],
     execute(world, [entity]) {
-      const serverInfo = world.getComponent(entity, ServerInfo)
-
-      serverInfo.lastRegisteredClientTick = client.lastFrameProcessedByServer
+      const serverInfo = world.getMutableComponent(entity, ServerInfo)
+      Object.assign(serverInfo, metadata)
     },
   })
   const world = createEntityAdmin({
@@ -78,7 +78,7 @@ export function createNetEcsClient<M extends CustomMessage>(
 
   world.createSingletonComponent(ServerInfo)
 
-  let lastFrameProcessedByServer = 0
+  let metadata = {}
   let reliable: Connection | null = null
   let unreliable: Connection | null = null
 
@@ -148,17 +148,14 @@ export function createNetEcsClient<M extends CustomMessage>(
   }
 
   function onMessage(data: ArrayBuffer) {
-    const message = decode(data) as Message
-    const [, , lib, tick] = message
-
-    if (tick > lastFrameProcessedByServer) {
-      lastFrameProcessedByServer = tick
-    }
+    const message = decode(data) as NetEcsMessage
+    const [, , lib] = message
 
     if (lib) {
       switch (message[0]) {
         case MessageType.StateUpdate:
-          handleStateUpdate(message[1])
+          handleStateUpdate(message[1][0])
+          metadata = message[1][1]
           break
         case MessageType.EntitiesCreated:
           handleEntitiesCreated(message[1])
@@ -233,9 +230,6 @@ export function createNetEcsClient<M extends CustomMessage>(
     world,
     sendReliable,
     sendUnreliable,
-    get lastFrameProcessedByServer() {
-      return lastFrameProcessedByServer
-    },
   }
 
   return client

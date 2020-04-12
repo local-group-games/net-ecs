@@ -1,8 +1,10 @@
 import { createComponentType, number } from "@net-ecs/core"
 
-export const ClientInfo = createComponentType({
-  name: "client_info",
+export const ExampleServerInfo = createComponentType({
+  name: "example_server_info",
   schema: {
+    tickRate: number,
+    sendRate: number,
     localClientEntity: number,
     remoteClientEntity: number,
   },

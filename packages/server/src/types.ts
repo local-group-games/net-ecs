@@ -29,5 +29,6 @@ export type NetworkOptions = {
 
 export type NetEcsServerOptions = {
   network: NetworkOptions
+  getClientStateUpdateMetadata: (client: ServerClient) => unknown
   world?: EntityAdminOptions
 }

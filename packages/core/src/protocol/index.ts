@@ -9,18 +9,8 @@ export enum MessageType {
   ComponentRemoved,
 }
 
-export type Message<T extends number = number, P = any> = [
-  T,
-  P,
-  boolean,
-  number,
-]
-export type CustomMessage<T extends number = number, P = any> = [
-  T,
-  P,
-  false,
-  number,
-]
+export type Message<T extends number = number, P = any> = [T, P, boolean]
+export type CustomMessage<T extends number = number, P = any> = [T, P, false]
 
 export type StateUpdateMessage = Message<
   MessageType.StateUpdate,
@@ -42,19 +32,18 @@ export type ComponentRemovedMessage = Message<
 export function createMessageHelper<T extends number, A extends any[], P>(
   type: T,
   fn: (...args: A) => P,
-): (tick: number, ...args: A) => Message<T, P> {
-  return (tick: number, ...args: A) => [type, fn(...args), true, tick]
+): (...args: A) => Message<T, P> {
+  return (...args: A) => [type, fn(...args), true]
 }
 
 export function createCustomMessageHelper<T extends number, A extends any[], P>(
   type: T,
   fn: (...args: A) => P,
-): (tick: number, ...args: A) => CustomMessage<T, P> {
-  return (tick: number, ...args: A) => [type, fn(...args), false, tick]
+): (...args: A) => CustomMessage<T, P> {
+  return (...args: A) => [type, fn(...args), false]
 }
 
 export type MessageHelper<T extends number = number, P = any> = (
-  frame: number,
   ...args: any[]
 ) => Message<T, P>
 
@@ -64,7 +53,8 @@ export const protocol = {
   // Server
   stateUpdate: createMessageHelper(
     MessageType.StateUpdate,
-    (payload: Component[]) => payload,
+    (payload: Component[], clientMetadata: unknown) =>
+      [payload, clientMetadata] as [Component[], unknown],
   ),
   entitiesCreated: createMessageHelper(
     MessageType.EntitiesCreated,

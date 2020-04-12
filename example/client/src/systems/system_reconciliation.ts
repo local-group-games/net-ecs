@@ -1,20 +1,21 @@
 import { ServerInfo } from "@net-ecs/client"
 import { createSystem, With } from "@net-ecs/core"
 import { applyInput, InputData, Transform } from "@net-ecs/example-server"
-import { ClientInfo } from "../components/component_client_info"
+import { ExampleServerInfo } from "../components/component_example_server_info"
 import { InputBuffer } from "../components/component_input_buffer"
+import { debug } from "../debug"
 
 export const reconciliation = createSystem({
   name: "reconciliation",
-  query: [[With(ClientInfo)], [With(ServerInfo)], [With(InputBuffer)]],
+  query: [[With(ExampleServerInfo)], [With(ServerInfo)], [With(InputBuffer)]],
   execute(world, [client], [server], [inputBuffer]) {
-    const { localClientEntity } = world.getComponent(client, ClientInfo)
+    const { localClientEntity } = world.getComponent(client, ExampleServerInfo)
 
     if (!localClientEntity) {
       return
     }
 
-    const { lastRegisteredClientTick } = world.getComponent(server, ServerInfo)
+    const { seq } = world.getComponent<any>(server, ServerInfo)
     const { buffer } = world.getComponent(inputBuffer, InputBuffer)
     const transform = world.tryGetComponent(localClientEntity, Transform)
 
@@ -27,13 +28,20 @@ export const reconciliation = createSystem({
     while (j < buffer.length) {
       const input = buffer[j] as InputData
 
-      if (input[4] <= lastRegisteredClientTick) {
+      if (input[4] <= (seq as number)) {
         buffer.splice(j, 1)
       } else {
         // Apply new inputs to the server transform.
         applyInput(input, transform)
         j++
       }
+    }
+
+    if (j > 0) {
+      debug.log.info(`reconciled ${j} inputs`, {
+        id: "reconciliation",
+        duration: 1000,
+      })
     }
   },
 })

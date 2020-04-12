@@ -3,6 +3,6 @@ export type InputData = [
   number, // right
   number, // down
   number, // left
-  number, // tick
+  number, // sequence id
   number, // step time
 ]

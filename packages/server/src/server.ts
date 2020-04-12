@@ -29,7 +29,6 @@ export function createNetEcsServer<M extends CustomMessage>(
     clientMessageReceived: new Signal<ServerClient, M>(),
     clientConnectionFailed: new Signal<{ error: string }>(),
   }
-  const lastTicks = new WeakMap<ServerClient, number>()
   const clients = createClientAdmin({
     onClientConnect(client) {
       signals.clientConnected.dispatch(client)
@@ -41,9 +40,7 @@ export function createNetEcsServer<M extends CustomMessage>(
       signals.clientConnectionFailed.dispatch(error)
     },
     onClientMessage(client, message) {
-      const [, , lib, tick] = message
-
-      lastTicks.set(client, tick)
+      const [, , lib] = message
 
       if (lib) {
         // Handle client library message.
@@ -117,27 +114,31 @@ export function createNetEcsServer<M extends CustomMessage>(
     priorities.reset()
 
     for (const client of clients) {
-      const tick = lastTicks.get(client)
+      const clientStateUpdateMetadata = options.getClientStateUpdateMetadata(
+        client,
+      )
 
       if (temp_created.length > 0) {
-        client.reliable?.send(
-          encode(protocol.entitiesCreated(tick, temp_created)),
-        )
+        client.reliable?.send(encode(protocol.entitiesCreated(temp_created)))
       }
 
       if (temp_deleted.length > 0) {
-        client.reliable?.send(
-          encode(protocol.entitiesDeleted(tick, temp_deleted)),
-        )
+        client.reliable?.send(encode(protocol.entitiesDeleted(temp_deleted)))
       }
 
       if (send_r) {
-        const message = protocol.stateUpdate(tick, temp_changed_r)
+        const message = protocol.stateUpdate(
+          temp_changed_r,
+          clientStateUpdateMetadata,
+        )
         client.reliable?.send(encode(message))
       }
 
       if (send_u) {
-        const message = protocol.stateUpdate(tick, temp_changed_u)
+        const message = protocol.stateUpdate(
+          temp_changed_u,
+          clientStateUpdateMetadata,
+        )
 
         client.unreliable?.send(encode(message))
         last_update_u = time

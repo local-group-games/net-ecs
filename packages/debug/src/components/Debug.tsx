@@ -1,6 +1,15 @@
 import React from "react"
 import { useNetECS } from "../context/NetEcsContext"
-import { Panel, PanelCard, PanelDrawer } from "./Panel"
+import { Log } from "./Log"
+import { Panel, PanelCard, PanelDrawer, PanelMode } from "./Panel"
+import styled from "styled-components"
+
+const DebugWrapper = styled.div`
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+`
 
 export const Debug = () => {
   const { view } = useNetECS()
@@ -18,7 +27,12 @@ export const Debug = () => {
           <dt>entities</dt>
           <dd>{entities.length}</dd>
           <dt>components</dt>
-          <dd>{Object.values(componentTable).reduce((a, x) => a + Object.keys(x).length, 0)}</dd>
+          <dd>
+            {Object.values(componentTable).reduce(
+              (a, x) => a + Object.keys(x).length,
+              0,
+            )}
+          </dd>
           <dt>systems</dt>
           <dd>{Object.keys(systems).length}</dd>
         </React.Fragment>
@@ -56,14 +70,16 @@ export const Debug = () => {
         return (
           <PanelDrawer title={systemName} key={systemName}>
             <dl>
-              {Object.entries(queryResults).map(([queryString, queryResultCount]) => {
-                return (
-                  <React.Fragment key={queryString}>
-                    <dt>{queryString}</dt>
-                    <dd>{queryResultCount.length}</dd>
-                  </React.Fragment>
-                )
-              })}
+              {Object.entries(queryResults).map(
+                ([queryString, queryResultCount]) => {
+                  return (
+                    <React.Fragment key={queryString}>
+                      <dt>{queryString}</dt>
+                      <dd>{queryResultCount.length}</dd>
+                    </React.Fragment>
+                  )
+                },
+              )}
             </dl>
           </PanelDrawer>
         )
@@ -73,5 +89,12 @@ export const Debug = () => {
 
   const cards = [totalsCard, componentTableCard, poolsCard, systemsCard]
 
-  return <Panel title="net-ecs tools">{cards}</Panel>
+  return (
+    <DebugWrapper>
+      <Panel title="net-ecs tools">{cards}</Panel>
+      <Panel title="log" mode={PanelMode.Fill}>
+        <Log />
+      </Panel>
+    </DebugWrapper>
+  )
 }

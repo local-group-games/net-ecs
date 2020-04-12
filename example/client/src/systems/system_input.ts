@@ -1,9 +1,10 @@
 import { NetEcsClient } from "@net-ecs/client"
 import { createSystem, With } from "@net-ecs/core"
 import { applyInput, InputData, protocol } from "@net-ecs/example-server"
-import { ClientInfo } from "../components/component_client_info"
+import { ExampleServerInfo } from "../components/component_example_server_info"
 import { InputBuffer } from "../components/component_input_buffer"
 import { RenderTransform } from "../components/component_render_transform"
+import { debug } from "../debug"
 
 export function createInputSystem(client: NetEcsClient) {
   const keyMap: { [key: string]: boolean } = {
@@ -26,10 +27,13 @@ export function createInputSystem(client: NetEcsClient) {
 
   const input = createSystem({
     name: "input",
-    query: [[With(ClientInfo)], [With(InputBuffer)]],
+    query: [[With(ExampleServerInfo)], [With(InputBuffer)]],
     execute(world, [clientInfo], [inputBuffer]) {
       const tick = world.clock.tick
-      const { localClientEntity } = world.getComponent(clientInfo, ClientInfo)
+      const { localClientEntity } = world.getComponent(
+        clientInfo,
+        ExampleServerInfo,
+      )
       const input: InputData = [
         ~~keyMap.ArrowUp,
         ~~keyMap.ArrowRight,
@@ -47,14 +51,19 @@ export function createInputSystem(client: NetEcsClient) {
 
         if (renderTransform) {
           // Do client-side prediction.
-          applyInput(input, renderTransform)
+          if (applyInput(input, renderTransform)) {
+            debug.log.info(`input: ${input.toString()}`, {
+              id: "input",
+              duration: 1000,
+            })
+          }
         }
       }
 
       const { buffer } = world.getComponent(inputBuffer, InputBuffer)
 
       buffer.push(input)
-      client.sendUnreliable(protocol.move(tick, input))
+      client.sendUnreliable(protocol.move(input))
     },
   })
 

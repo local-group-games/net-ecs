@@ -6,7 +6,7 @@ export function applyInput(
   out: { x: number; y: number } = transform,
 ) {
   const [up, right, down, left, , step] = input
-  const factor = 500 * step
+  const factor = 500 * (step / 1000)
 
   if (input[0] + input[1] + input[2] + input[3] === 0) {
     return false
