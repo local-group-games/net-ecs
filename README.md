@@ -14,8 +14,8 @@ A TypeScript Entity-Component-System with built-in network synchronization.
 | [@net-ecs/debug](./packages/debug)          | Developer tools built in React. |
 | [@net-ecs/client](./packages/client)        | The net-ecs browser client.     |
 | [@net-ecs/server](./packages/server)        | The net-ecs Node server.        |
-| [@net-ecs/example-client](./example/client) | Boids client.                   |
-| [@net-ecs/example-server](./example/server) | Boids server.                   |
+| [@net-ecs/example-client](./example/client) | Drones client.                  |
+| [@net-ecs/example-server](./example/server) | Drones server.                  |
 
 ## Scripts
 

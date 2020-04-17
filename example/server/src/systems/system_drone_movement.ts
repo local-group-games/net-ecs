@@ -31,6 +31,10 @@ export const droneMovement = createSystem({
         continue
       }
 
+      if (closestPlayerDifference >= 200) {
+        continue
+      }
+
       droneTransform.x +=
         (closestPlayerTransform.x - droneTransform.x) * drone.speed
       droneTransform.y +=

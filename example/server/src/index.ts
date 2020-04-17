@@ -85,7 +85,12 @@ export function createNetEcsExampleServer() {
       const enemy = server.world.createEntity()
 
       server.world.addComponent(enemy, Drone, Math.random())
-      server.world.addComponent(enemy, Transform)
+      server.world.addComponent(
+        enemy,
+        Transform,
+        Math.random() * 800,
+        Math.random() * 600,
+      )
     }
 
     setInterval(() => {
