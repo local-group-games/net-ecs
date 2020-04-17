@@ -70,22 +70,3 @@ world.addComponent(entity, Health, 100)
 world.addComponent(entity, DamageOverTime, 1, 1, world.clock.time)
 world.tick(1)
 ```
-
-### Singleton components
-
-```ts
-const Brightness = createComponentType(
-  name: "brightness",
-  schema: { type: number, defaultValue: 100 }
-)
-const render = createSystem(
-  "render",
-  (world, [entity]) => {
-    const brightness = world.getComponent(entity, Brightness)
-    // do something with brightness component
-  },
-  [With(Brightness)],
-)
-world.createSingletonComponent(Brightness)
-world.addSystem(render)
-```

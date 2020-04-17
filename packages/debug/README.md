@@ -13,8 +13,9 @@ import { createEntityAdmin } from "@net-ecs/core"
 import { mount } from "@net-ecs/debug"
 
 const world = createEntityAdmin()
+const ui = mount(document.getElementById("debug")!)
 
-mount(document.getElementById("debug")!)
+ui.log.info("Debugger attached!")
 ```
 
 #### Specify a specific `EntityAdmin` instance
