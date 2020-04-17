@@ -1,10 +1,10 @@
-# net-ecs
+  <img src="./assets/logo.png" width="120px" alt="need a better logo">
 
 A TypeScript Entity-Component-System with built-in network synchronization.
 
   <img src="./assets/screenshot.png" style="margin: 0 auto">
 
-**NOTE: This code is untested, undocumented, and imperfect.** I am not an expert in the design and develoment of Entity-Component-Systems, nor networking. I built this project based on knowledge gained after many hours of informal investigation and experimentation around ECS and MOG concepts.
+**NOTE: This code is untested, undocumented and is a work-in-progress.**
 
 ## Packages
 
@@ -53,7 +53,7 @@ A TypeScript Entity-Component-System with built-in network synchronization.
 - [ ] Unit tests
 - [ ] Integration tests
 - [ ] Perf/load tests
-- [ ] Delta compression - only send changed fields
+- [ ] Delta compression - only send changed state
 
 ## License
 Copyright 2020 Eric McDaniel
