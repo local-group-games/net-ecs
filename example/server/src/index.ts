@@ -51,7 +51,7 @@ export function createNetEcsExampleServer() {
       return
     }
 
-    server.world.destroyEntity(entity)
+    server.world.deleteEntity(entity)
     entitiesByClient.delete(client)
   }
 

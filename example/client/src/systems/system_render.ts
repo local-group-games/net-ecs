@@ -29,8 +29,9 @@ export const render = createSystem({
       const entity = entities[i]
       const { x, y } = world.getComponent(entity, RenderTransform)
 
-      graphics.lineStyle(1, color32)
+      graphics.beginFill(color32)
       graphics.drawCircle(x, y, 4)
+      graphics.endFill()
     }
   },
 })

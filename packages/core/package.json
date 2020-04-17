@@ -19,7 +19,8 @@
   },
   "scripts": {
     "test": "echo \"Error: run tests from root\" && exit 1",
-    "build": "tsc"
+    "build": "tsc",
+    "docs": "typedoc --out docs src"
   },
   "dependencies": {
     "@msgpack/msgpack": "^1.12.0"

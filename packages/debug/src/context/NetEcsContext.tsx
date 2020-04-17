@@ -36,7 +36,7 @@ type NetEcsProviderProps = PropsWithChildren<{
   target?: EntityAdmin
 }>
 
-type LogMessage = {
+export type LogMessage = {
   id: number
   time: number
   text: string

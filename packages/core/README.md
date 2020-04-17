@@ -57,7 +57,7 @@ const damage = createSystem({
       }
 
       if (health.value <= 0) {
-        world.destroyEntity(entity)
+        world.deleteEntity(entity)
       }
     }
   },

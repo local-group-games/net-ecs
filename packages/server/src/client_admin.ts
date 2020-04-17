@@ -44,12 +44,16 @@ export function createClientAdmin(options: ClientAdminOptions): ClientAdmin {
       connecting.push(client)
     }
 
-    connection.closed.subscribe(() => onClientDisconnect(client))
     connection.messages.subscribe(data =>
       onClientMessage(client, decode(data) as Message),
     )
     connection.errors.subscribe(onConnectionError)
     connection.closed.subscribe(() => {
+      if (!clients.includes(client)) {
+        // Client already removed.
+        return
+      }
+      onClientDisconnect(client)
       clients.splice(clients.indexOf(client), 1)
     })
 

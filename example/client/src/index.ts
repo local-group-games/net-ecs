@@ -1,6 +1,5 @@
 import { createNetEcsClient } from "@net-ecs/client"
 import { createSystem, Entity, With } from "@net-ecs/core"
-import { mount } from "@net-ecs/debug"
 import {
   ExampleMessage,
   ExampleMessageType,
@@ -24,7 +23,7 @@ import {
 import { debug } from "./debug"
 
 const client = createNetEcsClient({
-  url: "ws://localhost:9000",
+  url: `ws://${window.location.hostname}:9000`,
   world: {
     componentTypes: [
       // Core
@@ -46,7 +45,7 @@ const client = createNetEcsClient({
   },
   network: {
     onEntitiesCreated(entities, client) {
-      debug.log.info(`entities created: ${entities.join(", ")}`)
+      debug.log.info(`created entities: ${entities.join(", ")}`)
       for (let i = 0; i < entities.length; i++) {
         const entity = entities[i]
         const transform = client.world.tryGetComponent(entity, Transform)
@@ -56,6 +55,9 @@ const client = createNetEcsClient({
           client.world.addComponent(entity, RenderTransform)
         }
       }
+    },
+    onEntitiesDeleted(entities) {
+      debug.log.info(`deleted entities: ${entities.join(", ")}`)
     },
     onStateUpdate() {
       // debug.log.info("update", { id: "state_update", duration: 10000 })

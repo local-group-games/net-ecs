@@ -39,7 +39,7 @@ export const reconciliation = createSystem({
 
     if (j > 0) {
       debug.log.info(`reconciled ${j} inputs`, {
-        id: "reconciliation",
+        id: "recon",
         duration: 1000,
       })
     }

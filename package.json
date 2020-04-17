@@ -5,7 +5,8 @@
   "main": "index.js",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^13.9.8"
+    "@types/node": "^13.9.8",
+    "typedoc": "^0.17.4"
   },
   "dependencies": {
     "lerna": "^3.20.2",

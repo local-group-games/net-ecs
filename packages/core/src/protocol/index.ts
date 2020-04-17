@@ -1,6 +1,7 @@
 import { decode, encode } from "@msgpack/msgpack"
 import { Component } from "../component"
 import { Entity } from "../entity"
+import { EntityAdmin } from "../entity_admin"
 
 export enum MessageType {
   StateUpdate,
@@ -68,6 +69,20 @@ export const protocol = {
     MessageType.ComponentRemoved,
     (payload: (Entity | string)[]) => payload,
   ),
+}
+
+export function insertCreatedSegment(
+  payload: (Entity | Component)[],
+  entity: Entity,
+  world: EntityAdmin,
+) {
+  const components = world.getAllComponents(entity)
+
+  payload.push(entity)
+
+  for (let j = 0; j < components.length; j++) {
+    payload.push(components[j])
+  }
 }
 
 export type ExtractProtocolMessageTypes<

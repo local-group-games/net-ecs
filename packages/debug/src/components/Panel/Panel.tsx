@@ -1,10 +1,14 @@
-import React, { ComponentProps } from "react"
+import React, { ComponentProps, forwardRef } from "react"
 import styled from "styled-components"
 
 const PanelTitle = styled.header`
-  padding: 10px;
+  padding: 0 10px;
   background-color: #293134;
   color: #f1f1f1;
+  height: 40px;
+  line-height: 40px;
+  position: sticky;
+  top: 0;
 `
 
 const PanelContentFill = styled.div`
@@ -26,7 +30,8 @@ const PanelWrapper = styled.section`
   font-family: "Iosevka", monospace;
   background-color: #1f2527;
   color: #9da9b1;
-  overflow: scroll;
+  overflow: auto;
+  position: relative;
   flex: 1;
 
   ul {
@@ -72,22 +77,24 @@ export enum PanelMode {
   Grid = "grid",
 }
 
-export function Panel(
-  props: ComponentProps<typeof PanelWrapper> & {
-    title: string
-    mode?: PanelMode
-  },
-) {
-  const { mode = PanelMode.Grid, title, children } = props
-
-  return (
-    <PanelWrapper>
-      <PanelTitle>{title}</PanelTitle>
-      {mode === PanelMode.Grid ? (
-        <PanelContentGrid>{children}</PanelContentGrid>
-      ) : (
-        <PanelContentFill>{children}</PanelContentFill>
-      )}
-    </PanelWrapper>
-  )
+export type PanelProps = ComponentProps<typeof PanelWrapper> & {
+  title: string
+  mode?: PanelMode
 }
+
+export const Panel = forwardRef<HTMLDivElement, PanelProps>(
+  (props: PanelProps, ref) => {
+    const { mode = PanelMode.Grid, title, children } = props
+
+    return (
+      <PanelWrapper ref={ref}>
+        <PanelTitle>{title}</PanelTitle>
+        {mode === PanelMode.Grid ? (
+          <PanelContentGrid>{children}</PanelContentGrid>
+        ) : (
+          <PanelContentFill>{children}</PanelContentFill>
+        )}
+      </PanelWrapper>
+    )
+  },
+)

@@ -1,0 +1,281 @@
+<!doctype html>
+<html class="default no-js">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>@net-ecs/core</title>
+	<meta name="description" content="Documentation for @net-ecs/core">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+<header>
+	<div class="tsd-page-toolbar">
+		<div class="container">
+			<div class="table-wrap">
+				<div class="table-cell" id="tsd-search" data-index="assets/js/search.json" data-base=".">
+					<div class="field">
+						<label for="tsd-search-field" class="tsd-widget search no-caption">Search</label>
+						<input id="tsd-search-field" type="text" />
+					</div>
+					<ul class="results">
+						<li class="state loading">Preparing search index...</li>
+						<li class="state failure">The search index is not available</li>
+					</ul>
+					<a href="index.html" class="title">@net-ecs/core</a>
+				</div>
+				<div class="table-cell" id="tsd-widgets">
+					<div id="tsd-filter">
+						<a href="#" class="tsd-widget options no-caption" data-toggle="options">Options</a>
+						<div class="tsd-filter-group">
+							<div class="tsd-select" id="tsd-filter-visibility">
+								<span class="tsd-select-label">All</span>
+								<ul class="tsd-select-list">
+									<li data-value="public">Public</li>
+									<li data-value="protected">Public/Protected</li>
+									<li data-value="private" class="selected">All</li>
+								</ul>
+							</div>
+							<input type="checkbox" id="tsd-filter-inherited" checked />
+							<label class="tsd-widget" for="tsd-filter-inherited">Inherited</label>
+							<input type="checkbox" id="tsd-filter-externals" checked />
+							<label class="tsd-widget" for="tsd-filter-externals">Externals</label>
+							<input type="checkbox" id="tsd-filter-only-exported" />
+							<label class="tsd-widget" for="tsd-filter-only-exported">Only exported</label>
+						</div>
+					</div>
+					<a href="#" class="tsd-widget menu no-caption" data-toggle="menu">Menu</a>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="tsd-page-title">
+		<div class="container">
+			<ul class="tsd-breadcrumb">
+				<li>
+					<a href="globals.html">Globals</a>
+				</li>
+			</ul>
+			<h1>@net-ecs/core</h1>
+		</div>
+	</div>
+</header>
+<div class="container container-main">
+	<div class="row">
+		<div class="col-8 col-content">
+			<div class="tsd-panel tsd-typography">
+				<a href="#net-ecscore" id="net-ecscore" style="color: inherit; text-decoration: none;">
+					<h1><code>@net-ecs/core</code></h1>
+				</a>
+				<p>Core of net-ecs including world, entity, component, and system creation.</p>
+				<a href="#usage" id="usage" style="color: inherit; text-decoration: none;">
+					<h2>Usage</h2>
+				</a>
+				<pre><code class="language-ts"><span class="hljs-keyword">import</span> {
+  createEntityAdmin,
+  createComponentType,
+  createSystem,
+  With,
+  <span class="hljs-built_in">number</span>
+} <span class="hljs-keyword">from</span> <span class="hljs-string">"@net-ecs/core"</span>
+
+<span class="hljs-keyword">const</span> world = createEntityAdmin()
+
+<span class="hljs-keyword">const</span> Health = createComponentType({
+  name: <span class="hljs-string">"health"</span>,
+  schema: {
+    value: <span class="hljs-built_in">number</span>,
+  }
+})
+
+<span class="hljs-keyword">const</span> DamageOverTime = createComponentType(
+  name: <span class="hljs-string">"damage_over_time"</span>,
+  schema: {
+    start: <span class="hljs-built_in">number</span>,
+    duration: <span class="hljs-built_in">number</span>,
+    damagePerSecond: <span class="hljs-built_in">number</span>,
+  },
+  initialize(component, duration: <span class="hljs-built_in">number</span>, damagePerSecond: <span class="hljs-built_in">number</span>, start: <span class="hljs-built_in">number</span>) {
+    component.duration = duration
+    component.damagePerSecond = damagePerSecond
+    component.start = start
+  },
+)
+
+<span class="hljs-keyword">const</span> damage = createSystem({
+  name: <span class="hljs-string">"damage"</span>,
+  queries: [
+    [With(Health), With(DamageOverTime)],
+  ],
+  execute(world, entities) {
+    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">let</span> i = <span class="hljs-number">0</span>; i &lt; entities.length; i++) {
+      <span class="hljs-keyword">const</span> entity = entities[i]
+      <span class="hljs-keyword">const</span> health = world.getMutableComponent(entity, Health)
+      <span class="hljs-keyword">const</span> { start, duration, damagePerSecond } = world.getComponent(
+        entity,
+        DamageOverTime,
+      )
+
+      <span class="hljs-keyword">if</span> (world.clock.time &gt;= start + duration) {
+        world.removeComponent(entity, DamageOverTime)
+      } <span class="hljs-keyword">else</span> {
+        health.value -= damagePerSecond * world.clock.step
+      }
+
+      <span class="hljs-keyword">if</span> (health.value &lt;= <span class="hljs-number">0</span>) {
+        world.deleteEntity(entity)
+      }
+    }
+  },
+})
+
+<span class="hljs-keyword">const</span> entity = world.createEntity()
+
+world.addSystem(damage)
+world.addComponent(entity, Health, <span class="hljs-number">100</span>)
+world.addComponent(entity, DamageOverTime, <span class="hljs-number">1</span>, <span class="hljs-number">1</span>, world.clock.time)
+world.tick(<span class="hljs-number">1</span>)</code></pre>
+				<a href="#singleton-components" id="singleton-components" style="color: inherit; text-decoration: none;">
+					<h3>Singleton components</h3>
+				</a>
+				<pre><code class="language-ts"><span class="hljs-keyword">const</span> Brightness = createComponentType(
+  name: <span class="hljs-string">"brightness"</span>,
+  schema: { <span class="hljs-keyword">type</span>: <span class="hljs-built_in">number</span>, defaultValue: <span class="hljs-number">100</span> }
+)
+<span class="hljs-keyword">const</span> render = createSystem(
+  <span class="hljs-string">"render"</span>,
+  <span class="hljs-function">(<span class="hljs-params">world, [entity]</span>) =&gt;</span> {
+    <span class="hljs-keyword">const</span> brightness = world.getComponent(entity, Brightness)
+    <span class="hljs-comment">// do something with brightness component</span>
+  },
+  [With(Brightness)],
+)
+world.createSingletonComponent(Brightness)
+world.addSystem(render)</code></pre>
+			</div>
+		</div>
+		<div class="col-4 col-menu menu-sticky-wrap menu-highlight">
+			<nav class="tsd-navigation primary">
+				<ul>
+					<li class="globals  ">
+						<a href="globals.html"><em>Globals</em></a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_component_.html">&quot;component&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_component_admin_.html">&quot;component_<wbr>admin&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_entity_.html">&quot;entity&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_entity_admin_.html">&quot;entity_<wbr>admin&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_entity_tag_.html">&quot;entity_<wbr>tag&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_entity_tag_admin_.html">&quot;entity_<wbr>tag_<wbr>admin&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_index_.html">&quot;index&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_internal_.html">&quot;internal&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_pool_stack_pool_.html">&quot;pool/stack_<wbr>pool&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_protocol_index_.html">&quot;protocol/index&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_schema_index_.html">&quot;schema/index&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_schema_schema_types_.html">&quot;schema/schema_<wbr>types&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_schema_schema_utils_.html">&quot;schema/schema_<wbr>utils&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_schema_standard_data_types_.html">&quot;schema/standard_<wbr>data_<wbr>types&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_selector_.html">&quot;selector&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_signal_.html">&quot;signal&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_system_.html">&quot;system&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_types_clock_.html">&quot;types/clock&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_types_util_.html">&quot;types/util&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_util_array_.html">&quot;util/array&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_util_component_.html">&quot;util/component&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_util_entity_admin_.html">&quot;util/entity_<wbr>admin&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_util_fp_.html">&quot;util/fp&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_util_index_.html">&quot;util/index&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_util_object_.html">&quot;util/object&quot;</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_util_selector_.html">&quot;util/selector&quot;</a>
+					</li>
+				</ul>
+			</nav>
+			<nav class="tsd-navigation secondary menu-sticky">
+				<ul class="before-current">
+				</ul>
+			</nav>
+		</div>
+	</div>
+</div>
+<footer class="with-border-bottom">
+	<div class="container">
+		<h2>Legend</h2>
+		<div class="tsd-legend-group">
+			<ul class="tsd-legend">
+				<li class="tsd-kind-object-literal"><span class="tsd-kind-icon">Object literal</span></li>
+				<li class="tsd-kind-variable"><span class="tsd-kind-icon">Variable</span></li>
+				<li class="tsd-kind-function"><span class="tsd-kind-icon">Function</span></li>
+				<li class="tsd-kind-function tsd-has-type-parameter"><span class="tsd-kind-icon">Function with type parameter</span></li>
+				<li class="tsd-kind-type-alias"><span class="tsd-kind-icon">Type alias</span></li>
+				<li class="tsd-kind-type-alias tsd-has-type-parameter"><span class="tsd-kind-icon">Type alias with type parameter</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-enum"><span class="tsd-kind-icon">Enumeration</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-interface tsd-has-type-parameter"><span class="tsd-kind-icon">Interface with type parameter</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-class tsd-has-type-parameter"><span class="tsd-kind-icon">Class with type parameter</span></li>
+			</ul>
+		</div>
+	</div>
+</footer>
+<div class="container tsd-generator">
+	<p>Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p>
+</div>
+<div class="overlay"></div>
+<script src="assets/js/main.js"></script>
+<script>if (location.protocol == 'file:') document.write('<script src="assets/js/search.js"><' + '/script>');</script>
+</body>
+</html>

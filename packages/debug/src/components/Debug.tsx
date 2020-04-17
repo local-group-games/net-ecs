@@ -1,5 +1,5 @@
-import React from "react"
-import { useNetECS } from "../context/NetEcsContext"
+import React, { useEffect, useRef, useState } from "react"
+import { useNetECS, LogMessage } from "../context/NetEcsContext"
 import { Log } from "./Log"
 import { Panel, PanelCard, PanelDrawer, PanelMode } from "./Panel"
 import styled from "styled-components"
@@ -11,8 +11,40 @@ const DebugWrapper = styled.div`
   flex-direction: column;
 `
 
+function useLogScroll(messages: LogMessage[]) {
+  const ref = useRef<HTMLDivElement>()
+  const [attached, setAttached] = useState(true)
+  const { current: el } = ref
+
+  useEffect(() => {
+    if (!el) {
+      return
+    }
+
+    const onScroll = () =>
+      setAttached(el.scrollHeight - el.scrollTop === el.clientHeight)
+
+    el.addEventListener("scroll", onScroll)
+
+    return () => el.removeEventListener("scroll", onScroll)
+  }, [el])
+
+  useEffect(() => {
+    if (!el) {
+      return
+    }
+
+    if (attached) {
+      el.scrollTo({ top: el.scrollHeight })
+    }
+  }, [attached, messages, el])
+
+  return ref
+}
+
 export const Debug = () => {
-  const { view } = useNetECS()
+  const { view, log } = useNetECS()
+  const ref = useLogScroll(log.messages)
 
   if (!view) {
     return null
@@ -92,8 +124,8 @@ export const Debug = () => {
   return (
     <DebugWrapper>
       <Panel title="net-ecs tools">{cards}</Panel>
-      <Panel title="log" mode={PanelMode.Fill}>
-        <Log />
+      <Panel title="log" mode={PanelMode.Fill} ref={ref}>
+        <Log messages={log.messages} />
       </Panel>
     </DebugWrapper>
   )

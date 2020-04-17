@@ -157,6 +157,8 @@ export function createEntityAdmin(
   }
 
   function tick(timeStep: number) {
+    signals.preTick.dispatch()
+
     // Clear touched entities.
     mutableEmpty(touchedEntities)
 
@@ -173,6 +175,7 @@ export function createEntityAdmin(
     // Release deleted entities' components before updating their queries.
     for (const entity of tags[EntityTag.Deleted]) {
       components.removeAllComponents(entity)
+      mutableRemoveUnordered(entities, entity)
     }
 
     // Update queries for changed entities and store touched entities.
@@ -180,8 +183,6 @@ export function createEntityAdmin(
       updateAllQueriesForEntity(entity)
       touchedEntities.push(entity)
     }
-
-    signals.preTick.dispatch()
 
     tags.reset()
 
@@ -218,12 +219,11 @@ export function createEntityAdmin(
     return entity
   }
 
-  function destroyEntity(entity: Entity) {
+  function deleteEntity(entity: Entity) {
     if (!entities.includes(entity)) {
       return
     }
 
-    mutableRemoveUnordered(entities, entity)
     tags.set(entity, EntityTag.Deleted)
 
     return entity
@@ -372,7 +372,7 @@ export function createEntityAdmin(
     tick,
     hasEntity,
     createEntity,
-    destroyEntity,
+    deleteEntity,
     addComponent,
     insertComponent,
     removeComponent,

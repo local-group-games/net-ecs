@@ -41,6 +41,10 @@ export type NetEcsClientOptions<M extends CustomMessage> = {
       entities: ReadonlyArray<Entity>,
       client: NetEcsClient,
     ): void
+    onEntitiesDeleted?(
+      entities: ReadonlyArray<Entity>,
+      client: NetEcsClient,
+    ): void
   }
 }
 
@@ -57,6 +61,7 @@ export function createNetEcsClient<M extends CustomMessage>(
       onStateUpdate = noop,
       onServerMessage = noop,
       onEntitiesCreated = noop,
+      onEntitiesDeleted = noop,
     },
   } = options
   const udp = new UdpClient({ url })
@@ -125,18 +130,20 @@ export function createNetEcsClient<M extends CustomMessage>(
     onEntitiesCreated(entities, client)
   }
 
-  function handleEntitiesDeleted(removed: ReadonlyArray<Entity>) {
-    for (let i = 0; i < removed.length; i++) {
-      const remoteEntity = removed[i]
+  function handleEntitiesDeleted(deleted: ReadonlyArray<Entity>) {
+    for (let i = 0; i < deleted.length; i++) {
+      const remoteEntity = deleted[i]
       const localEntity = remoteToLocal.get(remoteEntity)
 
       if (!localEntity) {
         throw attemptedToRemoveNonExistentEntityError
       }
 
-      world.destroyEntity(localEntity)
+      world.deleteEntity(localEntity)
       remoteToLocal.delete(remoteEntity)
     }
+
+    onEntitiesDeleted(deleted, client)
   }
 
   function handleComponentRemoved(entity: Entity, type: string) {

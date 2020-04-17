@@ -5,6 +5,7 @@ import {
   encode,
   Entity,
   EntityTag,
+  insertCreatedSegment,
   mutableEmpty,
   protocol,
   Signal,
@@ -31,6 +32,13 @@ export function createNetEcsServer<M extends CustomMessage>(
   }
   const clients = createClientAdmin({
     onClientConnect(client) {
+      const payload: (Entity | Component)[] = []
+
+      for (let entity of world.entities) {
+        insertCreatedSegment(payload, entity, world)
+      }
+
+      client.reliable.send(encode(protocol.entitiesCreated(payload)))
       signals.clientConnected.dispatch(client)
     },
     onClientDisconnect(client) {
@@ -65,12 +73,7 @@ export function createNetEcsServer<M extends CustomMessage>(
     for (let entity of world.entities) {
       switch (world.tags.get(entity)) {
         case EntityTag.Created: {
-          const components = world.getAllComponents(entity)
-          temp_created.push(entity)
-
-          for (let j = 0; j < components.length; j++) {
-            temp_created.push(components[j])
-          }
+          insertCreatedSegment(temp_created, entity, world)
           break
         }
         case EntityTag.Changed:
@@ -111,6 +114,9 @@ export function createNetEcsServer<M extends CustomMessage>(
       }
     }
 
+    const message_created = encode(protocol.entitiesCreated(temp_created))
+    const message_deleted = encode(protocol.entitiesDeleted(temp_deleted))
+
     priorities.reset()
 
     for (const client of clients) {
@@ -119,11 +125,11 @@ export function createNetEcsServer<M extends CustomMessage>(
       )
 
       if (temp_created.length > 0) {
-        client.reliable?.send(encode(protocol.entitiesCreated(temp_created)))
+        client.reliable?.send(message_created)
       }
 
       if (temp_deleted.length > 0) {
-        client.reliable?.send(encode(protocol.entitiesDeleted(temp_deleted)))
+        client.reliable?.send(message_deleted)
       }
 
       if (send_r) {
