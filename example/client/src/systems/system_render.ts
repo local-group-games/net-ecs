@@ -2,6 +2,7 @@ import { createSystem, With } from "@net-ecs/core"
 import { Color } from "../components"
 import { RenderTransform } from "../components/component_render_transform"
 import { app, framerate, graphics } from "../graphics"
+import { Drone } from "@net-ecs/example-server"
 
 function fromRGBto32(r: number, g: number, b: number) {
   return Number(
@@ -28,10 +29,17 @@ export const render = createSystem({
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i]
       const { x, y } = world.getComponent(entity, RenderTransform)
+      const isDrone = world.tryGetComponent(entity, Drone)
 
-      graphics.beginFill(color32)
-      graphics.drawCircle(x, y, 4)
-      graphics.endFill()
+      if (isDrone) {
+        graphics.beginFill(0xffffff)
+        graphics.drawRect(x, y, 2, 2)
+        graphics.endFill()
+      } else {
+        graphics.beginFill(color32)
+        graphics.drawCircle(x, y, 4)
+        graphics.endFill()
+      }
     }
   },
 })

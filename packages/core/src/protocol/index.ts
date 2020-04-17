@@ -75,13 +75,18 @@ export function insertCreatedSegment(
   payload: (Entity | Component)[],
   entity: Entity,
   world: EntityAdmin,
+  include: string[],
 ) {
   const components = world.getAllComponents(entity)
 
   payload.push(entity)
 
   for (let j = 0; j < components.length; j++) {
-    payload.push(components[j])
+    const component = components[j]
+
+    if (include.includes(component.name)) {
+      payload.push(components[j])
+    }
   }
 }
 

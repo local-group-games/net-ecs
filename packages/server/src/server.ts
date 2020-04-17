@@ -35,7 +35,7 @@ export function createNetEcsServer<M extends CustomMessage>(
       const payload: (Entity | Component)[] = []
 
       for (let entity of world.entities) {
-        insertCreatedSegment(payload, entity, world)
+        insertCreatedSegment(payload, entity, world, networkedComponentTypes)
       }
 
       client.reliable.send(encode(protocol.entitiesCreated(payload)))
@@ -73,7 +73,12 @@ export function createNetEcsServer<M extends CustomMessage>(
     for (let entity of world.entities) {
       switch (world.tags.get(entity)) {
         case EntityTag.Created: {
-          insertCreatedSegment(temp_created, entity, world)
+          insertCreatedSegment(
+            temp_created,
+            entity,
+            world,
+            networkedComponentTypes,
+          )
           break
         }
         case EntityTag.Changed:

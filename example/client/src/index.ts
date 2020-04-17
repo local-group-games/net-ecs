@@ -1,6 +1,7 @@
 import { createNetEcsClient } from "@net-ecs/client"
 import { createSystem, Entity, With } from "@net-ecs/core"
 import {
+  Drone,
   ExampleMessage,
   ExampleMessageType,
   Transform,
@@ -12,6 +13,7 @@ import {
   InterpolationBuffer,
   RenderTransform,
 } from "./components"
+import { debug } from "./debug"
 import { app } from "./graphics"
 import {
   colorTransition,
@@ -20,7 +22,6 @@ import {
   reconciliation,
   render,
 } from "./systems"
-import { debug } from "./debug"
 
 const client = createNetEcsClient({
   url: `ws://${window.location.hostname}:9000`,
@@ -28,6 +29,7 @@ const client = createNetEcsClient({
     componentTypes: [
       // Core
       Transform,
+      Drone,
       // Client
       ExampleServerInfo,
       Color,
@@ -59,8 +61,11 @@ const client = createNetEcsClient({
     onEntitiesDeleted(entities) {
       debug.log.info(`deleted entities: ${entities.join(", ")}`)
     },
-    onStateUpdate() {
-      // debug.log.info("update", { id: "state_update", duration: 10000 })
+    onStateUpdate(update) {
+      // debug.log.info(`update: ${JSON.stringify(update)}`, {
+      //   id: "state_update",
+      //   duration: 10000,
+      // })
     },
     onServerMessage(message: ExampleMessage) {
       switch (message[0]) {

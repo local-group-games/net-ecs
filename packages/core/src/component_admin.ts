@@ -22,7 +22,9 @@ export type ComponentPools = {
   [type: string]: StackPool<Component>
 }
 
-export const componentTypeNotRegistered = new Error("Component Type is not registered.")
+export const componentTypeNotRegistered = new Error(
+  "Component Type is not registered.",
+)
 export const componentDoesNotExistError = new Error("Component does not exist.")
 export const entityNotRegisteredError = new Error("Entity is not registered.")
 
@@ -176,7 +178,10 @@ export function createComponentAdmin(initialPoolSize: number) {
    * @param entity Entity of the lookup.
    * @param type Component type to find.
    */
-  function getComponent<F extends ComponentType>(entity: number, type: F): ComponentOf<F> {
+  function getComponent<F extends ComponentType>(
+    entity: number,
+    type: F,
+  ): ComponentOf<F> {
     const component = getComponentsOfType(type.name)[entity]
 
     if (!component) {
@@ -203,7 +208,7 @@ export function createComponentAdmin(initialPoolSize: number) {
   }
 
   function getAllComponents(entity: number) {
-    const components = []
+    const components: Component[] = []
 
     for (const componentType in componentTable) {
       const component = componentTable[componentType][entity]

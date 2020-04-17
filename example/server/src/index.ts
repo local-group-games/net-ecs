@@ -1,8 +1,9 @@
 import { encode } from "@net-ecs/core"
 import { createNetEcsServer, ServerClient } from "@net-ecs/server"
-import { Transform } from "./components"
+import { Drone, Player, Transform } from "./components"
 import { applyInput } from "./helpers"
 import { ExampleMessage, ExampleMessageType, protocol } from "./protocol"
+import { droneMovement } from "./systems"
 
 export * from "./components"
 export * from "./helpers"
@@ -17,14 +18,18 @@ export function createNetEcsExampleServer() {
   const inputSequenceByClient = new WeakMap<ServerClient, number>()
   const server = createNetEcsServer<ExampleMessage>({
     world: {
-      systems: [],
-      componentTypes: [Transform],
+      systems: [droneMovement],
+      componentTypes: [Transform, Player, Drone],
     },
     network: {
       priorities: {
         transform: {
-          weight: 1,
+          weight: 2,
           unreliable: true,
+        },
+        drone: {
+          weight: 1,
+          unreliable: false,
         },
       },
       unreliableSendRate: (1 / SEND_RATE) * 1000,
@@ -38,6 +43,7 @@ export function createNetEcsExampleServer() {
   function onClientConnect(client: ServerClient) {
     const entity = server.world.createEntity()
 
+    server.world.addComponent(entity, Player)
     server.world.addComponent(entity, Transform)
     entitiesByClient.set(client, entity)
     client.reliable.send(encode(protocol.clientEntity(entity)))
@@ -75,6 +81,13 @@ export function createNetEcsExampleServer() {
   let previousTime = 0
 
   function start(port: number) {
+    for (let i = 0; i < 10; i++) {
+      const enemy = server.world.createEntity()
+
+      server.world.addComponent(enemy, Drone, Math.random())
+      server.world.addComponent(enemy, Transform)
+    }
+
     setInterval(() => {
       const time = Date.now()
       server.world.tick(time - previousTime)
