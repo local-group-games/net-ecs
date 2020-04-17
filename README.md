@@ -2,8 +2,6 @@
 
 A TypeScript Entity-Component-System with built-in network synchronization.
 
-  <img src="./assets/screenshot.png" style="margin: 0 auto">
-
 **NOTE: This code is untested, undocumented and is a work-in-progress.**
 
 ## Packages
