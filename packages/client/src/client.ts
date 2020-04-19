@@ -13,6 +13,7 @@ import {
   createSystem,
   With,
   NetEcsMessage,
+  Signal,
 } from "@net-ecs/core"
 import { Client as UdpClient, Connection, Client } from "@web-udp/client"
 import { SESSION_ID } from "./const"
@@ -31,21 +32,6 @@ export type NetEcsClientOptions<M extends CustomMessage> = {
   url: string
   updaters?: { [componentType: string]: ComponentUpdater<any> }
   world?: EntityAdminOptions
-  network: {
-    onStateUpdate?(
-      components: ReadonlyArray<Component>,
-      client: NetEcsClient,
-    ): void
-    onServerMessage?(message: M, client: NetEcsClient): void
-    onEntitiesCreated?(
-      entities: ReadonlyArray<Entity>,
-      client: NetEcsClient,
-    ): void
-    onEntitiesDeleted?(
-      entities: ReadonlyArray<Entity>,
-      client: NetEcsClient,
-    ): void
-  }
 }
 
 function defaultUpdater(world: EntityAdmin, a: object, b: object) {
@@ -55,35 +41,23 @@ function defaultUpdater(world: EntityAdmin, a: object, b: object) {
 export function createNetEcsClient<M extends CustomMessage>(
   options: NetEcsClientOptions<M>,
 ) {
-  const {
-    url,
-    network: {
-      onStateUpdate = noop,
-      onServerMessage = noop,
-      onEntitiesCreated = noop,
-      onEntitiesDeleted = noop,
-    },
-  } = options
+  const { url } = options
   const udp = new UdpClient({ url })
-  const serverInfo = createSystem({
-    name: "server_info",
-    query: [[With(ServerInfo)]],
-    execute(world, [entity]) {
-      const serverInfo = world.getMutableComponent(entity, ServerInfo)
-      Object.assign(serverInfo, metadata)
-    },
-  })
   const world = createEntityAdmin({
     ...options.world,
     componentTypes: [ServerInfo, ...options.world?.componentTypes],
-    systems: [serverInfo, ...options.world?.systems],
+    systems: [...options.world?.systems],
   })
   const remoteToLocal = new Map<Entity, Entity>()
   const { updaters = {} } = options
+  const signals = {
+    synchronized: new Signal<Component[]>(),
+    entitiesCreated: new Signal<Entity[]>(),
+    entitiesDeleted: new Signal<Entity[]>(),
+    messageReceived: new Signal<CustomMessage>(),
+  }
+  const serverInfoEntity = world.createSingletonComponent(ServerInfo)
 
-  world.createSingletonComponent(ServerInfo)
-
-  let metadata = {}
   let reliable: Connection | null = null
   let unreliable: Connection | null = null
 
@@ -108,7 +82,7 @@ export function createNetEcsClient<M extends CustomMessage>(
       }
     }
 
-    onStateUpdate(changed, client)
+    signals.synchronized.dispatch(changed)
   }
 
   function handleEntitiesCreated(entries: ReadonlyArray<Entity | Component>) {
@@ -127,10 +101,10 @@ export function createNetEcsClient<M extends CustomMessage>(
       }
     }
 
-    onEntitiesCreated(entities, client)
+    signals.entitiesCreated.dispatch(entities)
   }
 
-  function handleEntitiesDeleted(deleted: ReadonlyArray<Entity>) {
+  function handleEntitiesDeleted(deleted: Entity[]) {
     for (let i = 0; i < deleted.length; i++) {
       const remoteEntity = deleted[i]
       const localEntity = remoteToLocal.get(remoteEntity)
@@ -143,7 +117,7 @@ export function createNetEcsClient<M extends CustomMessage>(
       remoteToLocal.delete(remoteEntity)
     }
 
-    onEntitiesDeleted(deleted, client)
+    signals.entitiesDeleted.dispatch(deleted)
   }
 
   function handleComponentRemoved(entity: Entity, type: string) {
@@ -160,10 +134,17 @@ export function createNetEcsClient<M extends CustomMessage>(
 
     if (lib) {
       switch (message[0]) {
-        case MessageType.StateUpdate:
-          handleStateUpdate(message[1][0])
-          metadata = message[1][1]
+        case MessageType.StateUpdate: {
+          const [, [update, metadata]] = message
+          const serverInfo = world.getMutableComponent(
+            serverInfoEntity,
+            ServerInfo,
+          )
+          handleStateUpdate(update)
+          Object.assign(serverInfo, metadata)
+
           break
+        }
         case MessageType.EntitiesCreated:
           handleEntitiesCreated(message[1])
           break
@@ -175,7 +156,7 @@ export function createNetEcsClient<M extends CustomMessage>(
           break
       }
     } else {
-      onServerMessage(message as M, client)
+      signals.messageReceived.dispatch(message as M)
     }
   }
 
@@ -237,6 +218,7 @@ export function createNetEcsClient<M extends CustomMessage>(
     world,
     sendReliable,
     sendUnreliable,
+    ...signals,
   }
 
   return client

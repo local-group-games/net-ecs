@@ -33,11 +33,11 @@ export const render = createSystem({
 
       if (isDrone) {
         graphics.beginFill(0xffffff)
-        graphics.drawRect(x, y, 2, 2)
+        graphics.drawRect(x, y, 4, 4)
         graphics.endFill()
       } else {
         graphics.beginFill(color32)
-        graphics.drawCircle(x, y, 4)
+        graphics.drawCircle(x, y, 6)
         graphics.endFill()
       }
     }

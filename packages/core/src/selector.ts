@@ -3,15 +3,15 @@ import { EntityTag } from "./entity_tag"
 
 export type Selector = {
   tag: EntityTag
-  componentName: string
+  componentType: ComponentType
 }
 
 function createSelector(tag: EntityTag) {
-  return (type?: ComponentType | string) => {
+  return (type: ComponentType) => {
     const selector = { tag } as Selector
 
     if (type) {
-      selector.componentName = typeof type === "string" ? type : type.name
+      selector.componentType = type
     }
 
     return selector

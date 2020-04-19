@@ -65,7 +65,7 @@ export function createNetEcsServer<M extends CustomMessage>(
 
   let last_update_u = 0
 
-  world.preTick.subscribe(() => {
+  world.tickStarted.subscribe(() => {
     const time = world.clock.time
     let send_u = false
     let send_r = false

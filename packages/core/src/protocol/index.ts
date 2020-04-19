@@ -59,11 +59,11 @@ export const protocol = {
   ),
   entitiesCreated: createMessageHelper(
     MessageType.EntitiesCreated,
-    (payload: ReadonlyArray<Entity | Component>) => payload,
+    (payload: (Entity | Component)[]) => payload,
   ),
   entitiesDeleted: createMessageHelper(
     MessageType.EntitiesDeleted,
-    (payload: ReadonlyArray<Entity>) => payload,
+    (payload: Entity[]) => payload,
   ),
   componentRemoved: createMessageHelper(
     MessageType.ComponentRemoved,

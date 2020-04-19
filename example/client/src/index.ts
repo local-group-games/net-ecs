@@ -1,5 +1,5 @@
 import { createNetEcsClient } from "@net-ecs/client"
-import { createSystem, Entity, With } from "@net-ecs/core"
+import { Entity } from "@net-ecs/core"
 import {
   Drone,
   ExampleMessage,
@@ -17,6 +17,7 @@ import { debug } from "./debug"
 import { app } from "./graphics"
 import {
   colorTransition,
+  createExampleServerInfoSystem,
   createInputSystem,
   interpolation,
   reconciliation,
@@ -45,89 +46,76 @@ const client = createNetEcsClient({
       render,
     ],
   },
-  network: {
-    onEntitiesCreated(entities, client) {
-      debug.log.info(`created entities: ${entities.join(", ")}`)
-      for (let i = 0; i < entities.length; i++) {
-        const entity = entities[i]
-        const transform = client.world.tryGetComponent(entity, Transform)
-
-        if (transform) {
-          client.world.addComponent(entity, InterpolationBuffer)
-          client.world.addComponent(entity, RenderTransform)
-        }
-      }
-    },
-    onEntitiesDeleted(entities) {
-      debug.log.info(`deleted entities: ${entities.join(", ")}`)
-    },
-    onStateUpdate(update) {
-      // debug.log.info(`update: ${JSON.stringify(update)}`, {
-      //   id: "state_update",
-      //   duration: 10000,
-      // })
-    },
-    onServerMessage(message: ExampleMessage) {
-      switch (message[0]) {
-        case ExampleMessageType.ServerInfo:
-          debug.log.info(
-            `server info: sendRate=${message[1].sendRate}, tickRate=${message[1].tickRate}`,
-          )
-          serverInfo = message[1]
-          break
-        case ExampleMessageType.ClientEntity:
-          debug.log.info(`client entity: ${message[1]}`)
-          remoteClientEntity = message[1]
-          break
-      }
-    },
-  },
 })
 
 debug.attach(client.world)
 
-let serverInfo: { sendRate: number; tickRate: number } | null = null
-let remoteClientEntity: Entity | null = null
+function onEntitiesCreated(entities: Entity[]) {
+  debug.log.info(`created entities: ${entities.join(", ")}`)
 
-const exampleServerInfo = createSystem({
-  name: "example_server_info",
-  query: [[With(ExampleServerInfo)]],
-  execute(world, [entity]) {
-    const exampleServerInfo = world.getMutableComponent(
-      entity,
-      ExampleServerInfo,
-    )
+  for (let i = 0; i < entities.length; i++) {
+    const entity = entities[i]
+    const transform = client.world.tryGetComponent(entity, Transform)
 
-    if (serverInfo && !exampleServerInfo.tickRate) {
-      Object.assign(exampleServerInfo, serverInfo)
+    if (transform) {
+      client.world.addComponent(entity, InterpolationBuffer)
+      client.world.addComponent(
+        entity,
+        RenderTransform,
+        transform.x,
+        transform.y,
+      )
     }
-
-    if (
-      remoteClientEntity &&
-      remoteClientEntity !== exampleServerInfo.remoteClientEntity
-    ) {
-      const local = client.remoteToLocal.get(remoteClientEntity)!
-
-      if (local) {
-        exampleServerInfo.remoteClientEntity = remoteClientEntity
-        exampleServerInfo.localClientEntity = local
-      }
-    }
-  },
-})
+  }
+}
+function onEntitiesDeleted(entities: Entity[]) {
+  debug.log.info(`deleted entities: ${entities.join(", ")}`)
+}
 
 async function main() {
-  const input = createInputSystem(client)
+  ;(window as any).client = client
 
-  client.world.createSingletonComponent(ExampleServerInfo)
+  const input = createInputSystem(client)
+  const exampleServerInfoEntity = client.world.createSingletonComponent(
+    ExampleServerInfo,
+  )
+
+  client.world.createSingletonComponent(Color)
   client.world.createSingletonComponent(InputBuffer)
 
   client.world.addSystem(input)
-  client.world.addSystem(exampleServerInfo)
-  client.world.createSingletonComponent(Color)
+  client.world.addSystem(createExampleServerInfoSystem(client))
+
+  function onMessageReceived(message: ExampleMessage) {
+    const serverInfo = client.world.getMutableComponent(
+      exampleServerInfoEntity,
+      ExampleServerInfo,
+    )
+
+    switch (message[0]) {
+      case ExampleMessageType.ServerInfo: {
+        const { sendRate, tickRate } = message[1]
+        debug.log.info(
+          `server info: sendRate=${sendRate}, tickRate=${tickRate}`,
+        )
+        serverInfo.sendRate = sendRate
+        serverInfo.tickRate = tickRate
+        break
+      }
+      case ExampleMessageType.ClientEntity: {
+        const entity = message[1]
+        debug.log.info(`remote client entity: ${entity}`)
+        serverInfo.remoteClientEntity = entity
+        break
+      }
+    }
+  }
+
+  client.entitiesCreated.subscribe(onEntitiesCreated)
+  client.entitiesDeleted.subscribe(onEntitiesDeleted)
+  client.messageReceived.subscribe(onMessageReceived)
 
   app.ticker.add(() => client.world.tick(app.ticker.deltaMS))
-  ;(window as any).world = client.world
 
   debug.log.info("connecting to master server")
   await client.initialize()

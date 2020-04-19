@@ -33,7 +33,7 @@ export function createNetEcsExampleServer() {
         },
       },
       unreliableSendRate: (1 / SEND_RATE) * 1000,
-      unreliableUpdateSize: 1000,
+      unreliableUpdateSize: 100,
     },
     getClientStateUpdateMetadata: client => ({
       seq: inputSequenceByClient.get(client),
@@ -67,8 +67,12 @@ export function createNetEcsExampleServer() {
     switch (message[0]) {
       case ExampleMessageType.Move:
         const input = message[1]
-        const transform = server.world.getMutableComponent(entity, Transform)
-        applyInput(input, transform)
+
+        if (input[0] || input[1] || input[2] || input[3]) {
+          const transform = server.world.getMutableComponent(entity, Transform)
+          applyInput(input, transform)
+        }
+
         inputSequenceByClient.set(client, input[4])
         break
     }
@@ -81,7 +85,7 @@ export function createNetEcsExampleServer() {
   let previousTime = 0
 
   function start(port: number) {
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 1000; i++) {
       const enemy = server.world.createEntity()
 
       server.world.addComponent(enemy, Drone, Math.random())

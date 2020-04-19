@@ -10,7 +10,7 @@ type DebugOptions = {
 
 const App = React.forwardRef<NetEcsContext, DebugOptions>((props, ref) => (
   <NetEcsProvider ref={ref} target={props.target}>
-    <Debug />
+    {/* <Debug /> */}
   </NetEcsProvider>
 ))
 

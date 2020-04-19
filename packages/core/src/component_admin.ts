@@ -181,7 +181,7 @@ export function createComponentAdmin(initialPoolSize: number) {
   function getComponent<F extends ComponentType>(
     entity: number,
     type: F,
-  ): ComponentOf<F> {
+  ): Readonly<ComponentOf<F>> {
     const component = getComponentsOfType(type.name)[entity]
 
     if (!component) {

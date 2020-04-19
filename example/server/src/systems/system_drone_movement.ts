@@ -1,6 +1,9 @@
-import { createSystem, With, Entity, ComponentOf } from "@net-ecs/core"
-import { Drone } from "../components/component_drone"
+import { ComponentOf, createSystem, With } from "@net-ecs/core"
 import { Player, Transform } from "../components"
+import { Drone } from "../components/component_drone"
+
+const MIN_THRESHOLD = 1
+const MAX_THRESHOLD = 200
 
 export const droneMovement = createSystem({
   name: "drone_movement",
@@ -9,36 +12,39 @@ export const droneMovement = createSystem({
     for (let i = 0; i < enemies.length; i++) {
       const entity = enemies[i]
       const drone = world.getComponent(entity, Drone)
-      const droneTransform = world.getMutableComponent(entity, Transform)
+      const droneTransform = world.getComponent(entity, Transform)
 
-      let closestPlayerDifference: number = Infinity
-      let closestPlayerTransform: ComponentOf<typeof Transform>
+      let distance: number = Infinity
+      let transform: ComponentOf<typeof Transform>
 
       for (let j = 0; j < players.length; j++) {
         const player = players[j]
         const playerTransform = world.getComponent(player, Transform)
-        const a = playerTransform.x - droneTransform.x
-        const b = playerTransform.y - droneTransform.y
-        const c = Math.sqrt(a * a + b * b)
+        const dx = playerTransform.x - droneTransform.x
+        const dy = playerTransform.y - droneTransform.y
+        const d = Math.sqrt(dx * dx + dy * dy)
 
-        if (c < closestPlayerDifference) {
-          closestPlayerDifference = c
-          closestPlayerTransform = playerTransform
+        if (d < distance) {
+          distance = d
+          transform = playerTransform
         }
       }
 
-      if (!closestPlayerTransform) {
+      if (!transform || distance >= MAX_THRESHOLD) {
         continue
       }
 
-      if (closestPlayerDifference >= 200) {
+      if (distance <= MIN_THRESHOLD) {
+        world.deleteEntity(entity)
         continue
       }
 
-      droneTransform.x +=
-        (closestPlayerTransform.x - droneTransform.x) * drone.speed
-      droneTransform.y +=
-        (closestPlayerTransform.y - droneTransform.y) * drone.speed
+      const mutableDroneTransform = world.getMutableComponent(entity, Transform)
+
+      mutableDroneTransform.x +=
+        (transform.x - mutableDroneTransform.x) * (drone.speed / distance)
+      mutableDroneTransform.y +=
+        (transform.y - mutableDroneTransform.y) * (drone.speed / distance)
     }
   },
 })

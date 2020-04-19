@@ -6,4 +6,8 @@ export const RenderTransform = createComponentType({
     x: number,
     y: number,
   },
+  initialize(c, x: number, y: number) {
+    c.x = x
+    c.y = y
+  },
 })

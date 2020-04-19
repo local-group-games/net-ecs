@@ -33,10 +33,6 @@ const defaultOptions: EntityAdminConfig = {
   componentTypes: [],
 }
 
-enum ComponentTag {
-  Changed,
-}
-
 const systemNotRegisteredError = new Error("System has not been registered.")
 const systemAlreadyRegisteredError = new Error("System was already registered.")
 
@@ -50,18 +46,15 @@ export function createEntityAdmin(
     time: 0,
   }
   const signals = {
-    preTick: new Signal<void>(),
+    tickStarted: new Signal<void>(),
   }
   const systems: System[] = []
   const entities: Entity[] = []
   const components = createComponentAdmin(config.initialPoolSize)
   const queries: { [systemName: string]: SystemQueryResult } = {}
   const tags = createEntityTagAdmin()
-  const componentsByTag = {
-    [ComponentTag.Changed]: new Set<Component>(),
-  }
-  const touchedEntities: Entity[] = []
-  const touchedComponents: Component[] = []
+  const changedComponents = new Set<Component>()
+  const changedEntities: Entity[] = []
 
   let entitySequence = 0
 
@@ -91,32 +84,6 @@ export function createEntityAdmin(
     return systems.includes(system)
   }
 
-  function select(selector: Selector, entity: Entity) {
-    let componentCheckPassed = true
-    let component: Component
-
-    if (selector.componentName) {
-      component = tryGetComponentByType(entity, selector.componentName)
-      componentCheckPassed = component !== null && component !== undefined
-    }
-
-    if (!componentCheckPassed) {
-      return selector.tag === EntityTag.Without
-    }
-
-    if (selector.tag === EntityTag.With) {
-      return true
-    }
-
-    const x = tags.has(entity, selector.tag)
-
-    if (selector.tag === EntityTag.Changed && component) {
-      return x && isChangedComponent(component)
-    }
-
-    return x
-  }
-
   function updateQueryForEntity(system: System, entity: Entity) {
     const { query } = system
     const results = queries[system.name]
@@ -127,14 +94,22 @@ export function createEntityAdmin(
       const isSelected = selectorResults.includes(entity)
 
       let isQueryHit = true
-
       let j = 0
 
       while (isQueryHit && j < selectors.length) {
-        const selector = selectors[j]
+        const { componentType, tag } = selectors[j]
+        const component = tryGetComponent(entity, componentType)
 
-        if (!select(selector, entity)) {
-          isQueryHit = false
+        if (component === null || component === undefined) {
+          isQueryHit = tag === EntityTag.Without
+        } else if (tag !== EntityTag.With) {
+          const hasTag = tags.has(entity, tag)
+
+          isQueryHit =
+            hasTag &&
+            (tag === EntityTag.Changed
+              ? changedComponents.has(component)
+              : true)
         }
 
         j++
@@ -157,20 +132,7 @@ export function createEntityAdmin(
   }
 
   function tick(timeStep: number) {
-    signals.preTick.dispatch()
-
-    // Clear touched entities.
-    mutableEmpty(touchedEntities)
-
-    // Clear touched components.
-    mutableEmpty(touchedComponents)
-
-    // Track components that were accessed in a mutable way on the previous tick.
-    for (const component of componentsByTag[ComponentTag.Changed]) {
-      touchedComponents.push(component)
-    }
-
-    componentsByTag[ComponentTag.Changed].clear()
+    signals.tickStarted.dispatch()
 
     // Release deleted entities' components before updating their queries.
     for (const entity of tags[EntityTag.Deleted]) {
@@ -181,7 +143,7 @@ export function createEntityAdmin(
     // Update queries for changed entities and store touched entities.
     for (const entity of tags.changed) {
       updateAllQueriesForEntity(entity)
-      touchedEntities.push(entity)
+      changedEntities.push(entity)
     }
 
     tags.reset()
@@ -201,9 +163,13 @@ export function createEntityAdmin(
       }
     }
 
-    for (let i = 0; i < touchedEntities.length; i++) {
-      updateAllQueriesForEntity(touchedEntities[i])
+    let touched: Entity
+
+    while ((touched = changedEntities.pop())) {
+      updateAllQueriesForEntity(touched)
     }
+
+    changedComponents.clear()
   }
 
   function hasEntity(entity: Entity) {
@@ -267,7 +233,7 @@ export function createEntityAdmin(
     const component = components.getComponent(entity, type)
 
     tags.setIfNoTag(entity, EntityTag.Changed)
-    componentsByTag[ComponentTag.Changed].add(component)
+    changedComponents.add(component)
 
     return component as ComponentOf<F>
   }
@@ -276,7 +242,7 @@ export function createEntityAdmin(
     const component = components.getComponentByType(entity, componentName)
 
     tags.setIfNoTag(entity, EntityTag.Changed)
-    componentsByTag[ComponentTag.Changed].add(component)
+    changedComponents.add(component)
 
     return component
   }
@@ -330,23 +296,17 @@ export function createEntityAdmin(
     return entity
   }
 
-  function isChangedComponent(component: Component) {
-    return touchedComponents.includes(component)
-  }
-
   function view() {
     return viewEntityAdmin(entityAdmin)
-  }
-
-  function setModified(component: Component) {
-    if (!touchedComponents.includes(component)) {
-      touchedComponents.push(component)
-    }
   }
 
   function insertComponent(entity: Entity, component: Component) {
     tags.setIfNoTag(entity, EntityTag.ComponentsChanged)
     components.insertComponent(entity, component)
+  }
+
+  function isChangedComponent(component: Component) {
+    return changedComponents.has(component)
   }
 
   const {
@@ -384,12 +344,11 @@ export function createEntityAdmin(
     tryGetComponentByType,
     tryGetMutableComponent,
     tryGetMutableComponentByType,
-    setModified,
+    isChangedComponent,
     createComponentInstance,
     createSingletonComponent,
     registerComponentType,
     view,
-    isChangedComponent,
     // signals
     ...signals,
     // internal
