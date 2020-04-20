@@ -103,13 +103,11 @@ export function createEntityAdmin(
         if (component === null || component === undefined) {
           isQueryHit = tag === EntityTag.Without
         } else if (tag !== EntityTag.With) {
-          const hasTag = tags.has(entity, tag)
-
-          isQueryHit =
-            hasTag &&
-            (tag === EntityTag.Changed
-              ? changedComponents.has(component)
-              : true)
+          if (!tags.has(entity, tag)) {
+            isQueryHit = false
+          } else if (tag === EntityTag.Changed) {
+            isQueryHit = changedComponents.has(component)
+          }
         }
 
         j++

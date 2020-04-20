@@ -15,7 +15,7 @@ import { initializeComponentFromSchema } from "./schema/schema_utils"
 import { ComponentTypeInitializerArgs } from "./types/util"
 
 export type ComponentTable = {
-  [type: string]: { [entity: number]: Component }
+  [type: string]: Component[]
 }
 
 export type ComponentPools = {
@@ -66,7 +66,7 @@ export function createComponentAdmin(initialPoolSize: number) {
     }
 
     componentPools[name] = createStackPool(create, release, initialPoolSize)
-    componentTable[name] = {}
+    componentTable[name] = []
   }
 
   /**
