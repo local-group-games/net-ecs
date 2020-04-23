@@ -1,7 +1,7 @@
-import { createStorageArchetype } from "./storage_archetype"
+import { createArchetype } from "./archetype"
 import { Storage } from "./storage_types"
 
-describe("StorageArchetype", () => {
+describe("Archetype", () => {
   const storage: Storage = {
     flags: {
       A: 1,
@@ -15,7 +15,7 @@ describe("StorageArchetype", () => {
     mut: jest.fn(),
   }
   it("yields results in the correct order", () => {
-    const archetype = createStorageArchetype(storage, [1, 4], 5)
+    const archetype = createArchetype(storage, [1, 4], 5)
     const components = [{ name: "A" }, { name: "C" }]
 
     // Insert components in order "A", "C"
@@ -29,7 +29,7 @@ describe("StorageArchetype", () => {
     expect(result[0][1]).toBe(components[0]) // A
   })
   it("throws an error on inserting an invalid set of components", () => {
-    const archetype = createStorageArchetype(storage, [1, 4], 5)
+    const archetype = createArchetype(storage, [1, 4], 5)
     const components = [{ name: "A" }, { name: "B" }]
 
     expect(() => archetype.insert(components)).toThrow()
@@ -37,7 +37,7 @@ describe("StorageArchetype", () => {
   // Location is theoretically an opaque value but we can use it to our
   // advantage to test.
   it("yields a location based on the chunk size", () => {
-    const archetype = createStorageArchetype(storage, [1], 2)
+    const archetype = createArchetype(storage, [1], 2)
     const entities = [[{ name: "A" }], [{ name: "A" }], [{ name: "A" }]]
     const locations = entities.map(e => archetype.insert(e))
 

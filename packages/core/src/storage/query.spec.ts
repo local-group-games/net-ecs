@@ -1,7 +1,7 @@
-import { query } from "./storage_query"
+import { query } from "./query"
 import { Storage } from "./storage_types"
 
-describe("query", () => {
+describe("Query", () => {
   const ComponentA = {
     name: "A",
     schema: {},

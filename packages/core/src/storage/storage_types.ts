@@ -25,7 +25,7 @@ export type ChunkSet<T extends ComponentType[]> = {
   chunks: Chunk<T>[]
 }
 
-export type StorageArchetype<T extends ComponentType[] = ComponentType[]> = {
+export type Archetype<T extends ComponentType[] = ComponentType[]> = {
   readonly filter: number
   insert(components: ComponentsOfTypes<T>): ChunkLocation
   remove(location: ChunkLocation): void
@@ -34,7 +34,7 @@ export type StorageArchetype<T extends ComponentType[] = ComponentType[]> = {
 
 export type Storage = {
   flags: { [name: string]: number }
-  archetypes: ReadonlyMap<number, StorageArchetype>
+  archetypes: ReadonlyMap<number, Archetype>
   insert(components: InternalComponent[]): Entity
   register(type: ComponentType): void
   remove(entity: Entity): void

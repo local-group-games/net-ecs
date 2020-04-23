@@ -1,9 +1,10 @@
 import { createStorage } from "./storage"
-const { createStorageArchetype } = require("./storage_archetype")
 
-jest.mock("./storage_archetype", () => {
+const { createArchetype } = require("./archetype")
+
+jest.mock("./archetype", () => {
   return {
-    createStorageArchetype: jest.fn(() => ({
+    createArchetype: jest.fn(() => ({
       filter: 1,
       insert: jest.fn(() => [1, 0, 0]),
       remove: jest.fn(),
@@ -12,7 +13,7 @@ jest.mock("./storage_archetype", () => {
   }
 })
 
-describe("storage", () => {
+describe("Storage", () => {
   it("creates a new entity for each insert", () => {
     const storage = createStorage(5)
 
@@ -48,14 +49,9 @@ describe("storage", () => {
     storage.insert([{ name: "B" }])
     storage.insert([{ name: "A" }, { name: "B" }])
 
-    expect(createStorageArchetype).toHaveBeenNthCalledWith(1, storage, [1], 5)
-    expect(createStorageArchetype).toHaveBeenNthCalledWith(2, storage, [2], 5)
-    expect(createStorageArchetype).toHaveBeenNthCalledWith(
-      3,
-      storage,
-      [1, 2],
-      5,
-    )
+    expect(createArchetype).toHaveBeenNthCalledWith(1, storage, [1], 5)
+    expect(createArchetype).toHaveBeenNthCalledWith(2, storage, [2], 5)
+    expect(createArchetype).toHaveBeenNthCalledWith(3, storage, [1, 2], 5)
   })
   it("removes components from archetype while removing entities", () => {
     const storage = createStorage(5)
@@ -72,6 +68,6 @@ describe("storage", () => {
   })
 
   afterEach(() => {
-    createStorageArchetype.mockClear()
+    createArchetype.mockClear()
   })
 })

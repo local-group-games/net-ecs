@@ -1,7 +1,7 @@
 import { ComponentsOfTypes, ComponentType } from "../component"
 import { mutableRemoveUnordered } from "../util/array"
 import {
-  StorageArchetype,
+  Archetype,
   Chunk,
   ChunkLocation,
   ChunkSet,
@@ -14,11 +14,11 @@ function createChunkSet<T extends ComponentType[]>(): ChunkSet<T> {
   }
 }
 
-export function createStorageArchetype<T extends ComponentType[]>(
+export function createArchetype<T extends ComponentType[]>(
   storage: Storage,
   flags: number[],
   size: number,
-): StorageArchetype<T> {
+): Archetype<T> {
   const filter = flags.reduce((a, f) => a | f, 0)
   const sets = [createChunkSet<T>()]
 

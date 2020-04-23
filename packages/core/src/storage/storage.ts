@@ -5,14 +5,14 @@ import {
   Mutable,
 } from "../component"
 import { Entity } from "../entity"
-import { createStorageArchetype } from "./storage_archetype"
-import { ChunkLocation, Storage, StorageArchetype } from "./storage_types"
+import { createArchetype } from "./archetype"
+import { ChunkLocation, Storage, Archetype } from "./storage_types"
 
 export function createStorage(size: number): Storage {
   const flags: { [name: string]: number } = {}
   const archetypes = new Map<
     number, // filter
-    StorageArchetype
+    Archetype
   >()
   const locations: ChunkLocation[] = []
 
@@ -41,7 +41,7 @@ export function createStorage(size: number): Storage {
         _flags[i] = f
       }
 
-      archetype = createStorageArchetype(storage, _flags, size)
+      archetype = createArchetype(storage, _flags, size)
       archetypes.set(archetype.filter, archetype)
     }
 
