@@ -30,22 +30,22 @@ export function createStorageArchetype<T extends ComponentType[]>(
     }
 
     let set: ChunkSet<T>
-    let i = 0
+    let setIdx = 0
 
     // TODO: Defragment and improve iteration speed here.
-    while ((set = sets[i]) && set.chunks.length === size) {
-      i++
+    while ((set = sets[setIdx]) && set.chunks.length === size) {
+      setIdx++
     }
 
     if (!set) {
       set = createChunkSet()
-      i = sets.push(set) - 1
+      setIdx = sets.push(set) - 1
     }
 
     const chunk: Chunk<T> = { components, changed: new Set() }
-    const s = set.chunks.push(chunk) - 1
+    const chunkIdx = set.chunks.push(chunk) - 1
 
-    return [filter, i, s]
+    return [filter, setIdx, chunkIdx]
   }
 
   function remove(location: ChunkLocation) {
@@ -55,12 +55,12 @@ export function createStorageArchetype<T extends ComponentType[]>(
     mutableRemoveUnordered(storage, storage[chunkIdx])
   }
 
-  const tmp_read_indices = []
+  const unsafe_read_indices = []
 
   function* read(outFlags: number[], out: ComponentsOfTypes<T>) {
     // Calculate the index of each outgoing component.
     for (let i = 0; i < flags.length; i++) {
-      tmp_read_indices[i] = outFlags.indexOf(flags[i])
+      unsafe_read_indices[i] = outFlags.indexOf(flags[i])
     }
 
     for (let i = 0; i < sets.length; i++) {
@@ -68,7 +68,7 @@ export function createStorageArchetype<T extends ComponentType[]>(
       for (let j = 0; j < set.chunks.length; j++) {
         const chunk = set.chunks[j]
         for (let k = 0; k < flags.length; k++) {
-          out[tmp_read_indices[k]] = chunk.components[k]
+          out[unsafe_read_indices[k]] = chunk.components[k]
         }
         yield out as ComponentsOfTypes<T>
       }
