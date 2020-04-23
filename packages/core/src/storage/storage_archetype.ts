@@ -11,7 +11,6 @@ import {
 function createChunkSet<T extends ComponentType[]>(): ChunkSet<T> {
   return {
     chunks: [],
-    layout: [],
   }
 }
 
@@ -56,14 +55,20 @@ export function createStorageArchetype<T extends ComponentType[]>(
     mutableRemoveUnordered(storage, storage[chunkIdx])
   }
 
-  function* read(flags: number[], out: ComponentsOfTypes<T>) {
+  const tmp_read_indices = []
+
+  function* read(outFlags: number[], out: ComponentsOfTypes<T>) {
+    // Calculate the index of each outgoing component.
+    for (let i = 0; i < flags.length; i++) {
+      tmp_read_indices[i] = outFlags.indexOf(flags[i])
+    }
+
     for (let i = 0; i < sets.length; i++) {
       const set = sets[i]
       for (let j = 0; j < set.chunks.length; j++) {
         const chunk = set.chunks[j]
         for (let k = 0; k < flags.length; k++) {
-          const idx = set.layout.indexOf(flags[k])
-          out[k] = chunk.components[idx]
+          out[tmp_read_indices[k]] = chunk.components[k]
         }
         yield out as ComponentsOfTypes<T>
       }

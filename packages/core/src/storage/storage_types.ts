@@ -23,7 +23,6 @@ export type Chunk<T extends ComponentType[]> = {
 
 export type ChunkSet<T extends ComponentType[]> = {
   chunks: Chunk<T>[]
-  layout: number[]
 }
 
 export type StorageArchetype<T extends ComponentType[] = ComponentType[]> = {

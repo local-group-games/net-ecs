@@ -14,16 +14,22 @@ describe("StorageArchetype", () => {
     remove: jest.fn(),
     mut: jest.fn(),
   }
-  it("yields results", () => {
-    const archetype = createStorageArchetype(storage, [4, 1], 5)
+  it("yields results in the correct order", () => {
+    const archetype = createStorageArchetype(storage, [1, 4], 5)
     const components = [{ name: "A" }, { name: "C" }]
+
+    // Insert components in order "A", "C"
     archetype.insert(components)
-    const result = Array.from(archetype.read([1, 4], []))
+
+    // Read using flags in the order of "C", "A"
+    const result = Array.from(archetype.read([4, 1], []))
 
     expect(result.length).toBe(1)
+    expect(result[0][0]).toBe(components[1]) // C
+    expect(result[0][1]).toBe(components[0]) // A
   })
   it("throws an error on inserting an invalid set of components", () => {
-    const archetype = createStorageArchetype(storage, [4, 1], 5)
+    const archetype = createStorageArchetype(storage, [1, 4], 5)
     const components = [{ name: "A" }, { name: "B" }]
 
     expect(() => archetype.insert(components)).toThrow()
