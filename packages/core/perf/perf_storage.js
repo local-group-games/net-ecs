@@ -14,10 +14,10 @@ module.exports.run = function run() {
   const entities = [
     ...arrayOf(25000, () => [{ name: "A" }]),
     ...arrayOf(25000, () => [{ name: "A" }, { name: "C" }]),
-    ...arrayOf(25000, () => [{ name: "B" }]),
-    ...arrayOf(25000, () => [{ name: "A" }, { name: "B" }, { name: "C" }]),
-    ...arrayOf(1000, () => [{ name: "D" }]),
-    ...arrayOf(1000, () => [{ name: "B" }, { name: "D" }]),
+    ...arrayOf(24900, () => [{ name: "B" }]),
+    ...arrayOf(24900, () => [{ name: "A" }, { name: "B" }, { name: "C" }]),
+    ...arrayOf(100, () => [{ name: "D" }]),
+    ...arrayOf(100, () => [{ name: "B" }, { name: "D" }]),
   ]
   const queries = [
     [components[0]],
@@ -43,16 +43,15 @@ module.exports.run = function run() {
   let c = 0
   const start = Date.now()
 
-  while (i-- >= 0) {
+  while (i >= 0) {
     for (let j = 0; j < queries.length; j++) {
       for (const [] of query(...queries[j]).run(storage)) {
-        c++
+        if (i === n) c++
       }
     }
+    i--
   }
   const end = Date.now()
 
-  console.log(
-    `iterated ${c} entities and averaged ${(end - start) / n}ms per tick`,
-  )
+  console.log(`averaged ${c} entities iterated per ${(end - start) / n}ms tick`)
 }

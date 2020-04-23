@@ -22,6 +22,8 @@ A TypeScript Entity-Component-System with built-in network synchronization.
 | `yarn example:build`  | Build the example client and server. |
 | `yarn example:client` | Run the example client appliction.   |
 | `yarn example:server` | Run the example server application.  |
+| `yarn test`           | Run all tests.                       |
+| `yarn perf`           | Run all performance tests.           |
 
 ## Concepts
 
@@ -42,8 +44,21 @@ A TypeScript Entity-Component-System with built-in network synchronization.
 ### Performance
 
 - Components are pooled.
-- Components are stored in a two-dimensional hash (`{ [type]: { [entity]: Component } }`) so lookups are fast.
-- System queries are updated only when components change.
+- Entities are organized into unique [Archetypes](https://csherratt.github.io/blog/posts/specs-and-legion/) so iteration is fast. See how it's implemented in the [storage module](./packages/core/src/storage).
+
+Example `yarn perf` on a 2018 MacBook Pro where ~150k entities were iterated at ~60FPS:
+
+```
+@net-ecs/core: entities   | 100000
+@net-ecs/core: components | 4
+@net-ecs/core: queries    | 4
+@net-ecs/core: ticks      | 100
+@net-ecs/core: register: 0.113ms
+@net-ecs/core: insert: 107.974ms
+@net-ecs/core: averaged 149800 entities iterated per 16.12ms tick
+```
+
+
 
 ## Roadmap to V1
 - [ ] API refinement

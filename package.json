@@ -19,6 +19,8 @@
     "example:build": "lerna run build --ignore=@net-ecs/example-client",
     "example:client": "npm run start --prefix ./example/client",
     "example:server": "npm run start --prefix ./example/server",
-    "postinstall": "lerna bootstrap"
+    "postinstall": "lerna bootstrap",
+    "test": "lerna run test --stream",
+    "perf": "lerna run perf --stream"
   }
 }
