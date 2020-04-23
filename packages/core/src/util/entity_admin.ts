@@ -35,12 +35,12 @@ export function viewEntityAdmin(entityAdmin: EntityAdmin) {
       const queryResults = results[i]
       let selectorStrings = []
 
-      for (let i = 0; i < query.length; i++) {
-        const { tag: selectorType, componentType } = query[i]
-        selectorStrings.push(
-          `${getReadableSelectorTypeName(selectorType)}(${componentType.name})`,
-        )
-      }
+      // for (let i = 0; i < query.length; i++) {
+      //   const { tag: selectorType, componentType } = query[i]
+      //   selectorStrings.push(
+      //     `${getReadableSelectorTypeName(selectorType)}(${componentType.name})`,
+      //   )
+      // }
       data[selectorStrings.join(",")] = queryResults
     }
 

@@ -1,3 +1,5 @@
+import { noop } from "./fp"
+
 export function mutableRemoveUnordered<T>(arr: T[], element: T) {
   const length = arr.length
   const index = arr.indexOf(element)
@@ -29,4 +31,8 @@ export function mutableRemove<T>(arr: T[], element: T) {
 
 export function mutableEmpty(arr: any[]) {
   while (arr.length > 0) arr.pop()
+}
+
+export function arrayOf<T = void>(len: number, f: () => T = noop as () => T) {
+  return Array(len).fill(undefined).map(f)
 }

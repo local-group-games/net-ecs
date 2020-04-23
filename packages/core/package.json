@@ -20,7 +20,8 @@
   "scripts": {
     "test": "jest --config ../../jest.config.js",
     "build": "tsc",
-    "docs": "typedoc --out docs src"
+    "docs": "typedoc --out docs src",
+    "perf": "yarn build && node perf/index.js"
   },
   "dependencies": {
     "@msgpack/msgpack": "^1.12.0"

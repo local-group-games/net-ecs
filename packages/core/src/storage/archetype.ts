@@ -58,17 +58,19 @@ export function createArchetype<T extends ComponentType[]>(
   const unsafe_read_indices = []
 
   function* read(outFlags: number[], out: ComponentsOfTypes<T>) {
+    const len = outFlags.length
+
     // Calculate the index of each outgoing component.
-    for (let i = 0; i < flags.length; i++) {
+    for (let i = 0; i < len; i++) {
       unsafe_read_indices[i] = outFlags.indexOf(flags[i])
     }
 
     for (let i = 0; i < sets.length; i++) {
-      const set = sets[i]
-      for (let j = 0; j < set.chunks.length; j++) {
-        const chunk = set.chunks[j]
-        for (let k = 0; k < flags.length; k++) {
-          out[unsafe_read_indices[k]] = chunk.components[k]
+      const { chunks } = sets[i]
+      for (let j = 0; j < chunks.length; j++) {
+        const { components } = chunks[j]
+        for (let k = 0; k < len; k++) {
+          out[unsafe_read_indices[k]] = components[k]
         }
         yield out as ComponentsOfTypes<T>
       }

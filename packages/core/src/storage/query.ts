@@ -1,12 +1,9 @@
 import { ComponentsOfTypes, ComponentType } from "../component"
+import { arrayOf } from "../util"
 import { Storage } from "./storage_types"
 
 export type Query<T extends ComponentType[]> = {
   filter<F>(f: F): Query<T & F>
-}
-
-function arrayOf<T = undefined>(len: number, t?: T) {
-  return Array(len).fill(t)
 }
 
 export function query<T extends ComponentType[]>(...types: ComponentType[]) {
