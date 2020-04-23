@@ -1,9 +1,6 @@
 import { Signal } from "./signal"
 import { EntityAdmin } from "./entity_admin"
 
-// Component
-export const INTERNAL_$componentChanged = Symbol("componentChanged")
-
 // ComponentAdmin
 export const INTERNAL_$componentAdminComponentTable = Symbol(
   "componentAdminComponentTable",

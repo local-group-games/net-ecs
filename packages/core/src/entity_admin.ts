@@ -4,18 +4,16 @@ import { Entity } from "./entity"
 import { EntityTag } from "./entity_tag"
 import { createEntityTagAdmin } from "./entity_tag_admin"
 import * as Internal from "./internal"
-import { Selector } from "./selector"
+import { Signal } from "./signal"
 import { System, SystemQueryResult } from "./system"
 import { Clock } from "./types/clock"
 import { ComponentTypeInitializerArgs } from "./types/util"
 import {
   getComponentTypeName,
-  mutableEmpty,
   mutableRemove,
   mutableRemoveUnordered,
   viewEntityAdmin,
 } from "./util"
-import { Signal } from "./signal"
 
 export type EntityAdminConfig = {
   initialPoolSize: number
@@ -89,34 +87,14 @@ export function createEntityAdmin(
     const results = queries[system.name]
 
     for (let i = 0; i < query.length; i++) {
-      const selectors = system.query[i]
-      const selectorResults = results[i]
-      const isSelected = selectorResults.includes(entity)
+      const has = hasComponent(entity, query[i])
+      const result = results[i]
+      const present = result.includes(entity)
 
-      let isQueryHit = true
-      let j = 0
-
-      while (isQueryHit && j < selectors.length) {
-        const { componentType, tag } = selectors[j]
-        const component = tryGetComponent(entity, componentType)
-
-        if (component === null || component === undefined) {
-          isQueryHit = tag === EntityTag.Without
-        } else if (tag !== EntityTag.With) {
-          if (!tags.has(entity, tag)) {
-            isQueryHit = false
-          } else if (tag === EntityTag.Changed) {
-            isQueryHit = changedComponents.has(component)
-          }
-        }
-
-        j++
-      }
-
-      if (isQueryHit && !isSelected) {
-        selectorResults.push(entity)
-      } else if (!isQueryHit && isSelected) {
-        mutableRemoveUnordered(selectorResults, entity)
+      if (!has) {
+        mutableRemoveUnordered(result, entity)
+      } else if (!present) {
+        result.push(entity)
       }
     }
   }
@@ -138,12 +116,6 @@ export function createEntityAdmin(
       mutableRemoveUnordered(entities, entity)
     }
 
-    // Update queries for changed entities and store touched entities.
-    for (const entity of tags.changed) {
-      updateAllQueriesForEntity(entity)
-      changedEntities.push(entity)
-    }
-
     tags.reset()
 
     // Step the clock to the next frame and update the monotonic time.
@@ -160,14 +132,6 @@ export function createEntityAdmin(
         system.execute(entityAdmin, ...result)
       }
     }
-
-    let touched: Entity
-
-    while ((touched = changedEntities.pop())) {
-      updateAllQueriesForEntity(touched)
-    }
-
-    changedComponents.clear()
   }
 
   function hasEntity(entity: Entity) {
@@ -204,8 +168,6 @@ export function createEntityAdmin(
 
     const component = components.addComponent(entity, type, ...args)
 
-    tags.setIfNoTag(entity, EntityTag.ComponentsChanged)
-
     return component as ComponentOf<F>
   }
 
@@ -221,7 +183,6 @@ export function createEntityAdmin(
     }
 
     components.removeComponent(entity, componentName)
-    tags.setIfNoTag(entity, EntityTag.ComponentsChanged)
   }
 
   function getMutableComponent<F extends ComponentType>(
@@ -299,7 +260,6 @@ export function createEntityAdmin(
   }
 
   function insertComponent(entity: Entity, component: Component) {
-    tags.setIfNoTag(entity, EntityTag.ComponentsChanged)
     components.insertComponent(entity, component)
   }
 
@@ -313,6 +273,7 @@ export function createEntityAdmin(
     createComponentInstance,
     registerComponentType,
     getAllComponents,
+    hasComponent,
   } = components
 
   config.systems.forEach(addSystem)

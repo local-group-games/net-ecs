@@ -4,12 +4,10 @@ import { Entity } from "./entity"
 export function createEntityTagAdmin() {
   const tags = {
     [EntityTag.Created]: new Set<Entity>(),
-    [EntityTag.ComponentsChanged]: new Set<Entity>(),
     [EntityTag.Changed]: new Set<Entity>(),
     [EntityTag.Deleted]: new Set<Entity>(),
   }
   const tagsByEntity = new Map<Entity, EntityTag>()
-  const changed = new Set<Entity>()
 
   function get(entity: Entity): EntityTag | null {
     return tagsByEntity.get(entity)
@@ -24,7 +22,6 @@ export function createEntityTagAdmin() {
 
     tags[tag].add(entity)
     tagsByEntity.set(entity, tag)
-    changed.add(entity)
   }
 
   function setIfNoTag(entity: Entity, tag: EntityTag) {
@@ -57,9 +54,7 @@ export function createEntityTagAdmin() {
     tags[EntityTag.Created].clear()
     tags[EntityTag.Deleted].clear()
     tags[EntityTag.Changed].clear()
-    tags[EntityTag.ComponentsChanged].clear()
     tagsByEntity.clear()
-    changed.clear()
   }
 
   return {
@@ -70,6 +65,5 @@ export function createEntityTagAdmin() {
     has,
     remove,
     reset,
-    changed: changed as ReadonlySet<Entity>,
   }
 }

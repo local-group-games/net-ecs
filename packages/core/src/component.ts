@@ -1,6 +1,5 @@
 import { Entity } from "./entity"
-import { Schema, ComponentOfSchema, AnySchema } from "./schema"
-import { INTERNAL_$componentChanged } from "./internal"
+import { AnySchema, ComponentOfSchema, Schema } from "./schema"
 
 export type InternalComponent<
   T extends string = string,
@@ -8,17 +7,16 @@ export type InternalComponent<
 > = {
   name: T
   entity?: Entity
-  [INTERNAL_$componentChanged]: boolean
 } & ComponentOfSchema<S>
 
-export type PublicComponent<
+export type Component<
   T extends string = string,
   S extends Schema = AnySchema
-> = {
-  readonly name: T
-  readonly entity: Entity
-  [INTERNAL_$componentChanged]: boolean
-} & ComponentOfSchema<S>
+> = Readonly<InternalComponent<T, S>>
+
+export type Mutable<T> = {
+  -readonly [P in keyof T]: T[P] extends ReadonlyArray<infer U> ? U[] : T[P]
+}
 
 export type SchemaInitializer<S extends AnySchema> = (
   c: ComponentOfSchema<S>,
@@ -38,14 +36,13 @@ export interface ComponentType<
   initialize?: I
 }
 
-export type Component<
-  T extends string = string,
-  S extends Schema = AnySchema
-> = PublicComponent<T, S>
-
-export type ComponentOf<F extends ComponentType> = F extends ComponentType<
+export type ComponentOf<C extends ComponentType> = C extends ComponentType<
   infer T,
   infer S
 >
   ? Component<T, S>
   : never
+
+export type ComponentsOfTypes<C extends ComponentType[]> = {
+  [K in keyof C]: C[K] extends ComponentType ? ComponentOf<C[K]> : never
+}

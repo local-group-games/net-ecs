@@ -4,5 +4,4 @@ export enum EntityTag {
   Created,
   Deleted,
   Changed,
-  ComponentsChanged,
 }

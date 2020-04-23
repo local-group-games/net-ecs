@@ -1,5 +1,5 @@
-import { ComponentType, Component, SchemaInitializer } from "../component"
-import { Schema, ComponentOfSchema } from "../schema"
+import { Component, ComponentType, SchemaInitializer } from "../component"
+import { Schema } from "../schema"
 
 export function createComponentType<
   T extends string,
@@ -9,6 +9,8 @@ export function createComponentType<
   return definition
 }
 
-export function getComponentTypeName(identifier: ComponentType | Component | string) {
+export function getComponentTypeName(
+  identifier: ComponentType | Component | string,
+) {
   return typeof identifier === "string" ? identifier : identifier.name
 }
