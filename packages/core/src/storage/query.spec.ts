@@ -30,6 +30,9 @@ describe("Query", () => {
           read: jest.fn().mockImplementation(function* () {
             yield [{ name: "A" }, { name: "B" }]
           }),
+          tag: jest.fn(),
+          untag: jest.fn(),
+          bump: jest.fn(),
         },
       ],
       [
@@ -42,13 +45,18 @@ describe("Query", () => {
             yield [{ name: "C" }]
             yield [{ name: "C" }]
           }),
+          tag: jest.fn(),
+          untag: jest.fn(),
+          bump: jest.fn(),
         },
       ],
     ]),
     insert: jest.fn(),
     register: jest.fn(),
     remove: jest.fn(),
-    mut: jest.fn(),
+    tag: jest.fn(),
+    untag: jest.fn(),
+    bump: jest.fn(),
   }
 
   it("yields a collection of components from component storage with simple queries", () => {
@@ -80,12 +88,12 @@ describe("Query", () => {
 
     expect(result.length).toBe(0)
   })
-  it("supports extending of queries with additional component types", () => {
-    const test = query(ComponentA).filter(ComponentB)
+  // TODO: Test that Archetype.read() is called with the correct tag filter.
+  it("supports filtering of queries with tags", () => {
+    const test = query(ComponentA).filter(1)
     const result = Array.from(test.run(storage))
 
     expect(result[0].length).toBe(2)
     expect(result[0][0].name).toBe("A")
-    expect(result[0][1].name).toBe("B")
   })
 })

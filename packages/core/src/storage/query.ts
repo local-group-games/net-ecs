@@ -1,35 +1,67 @@
 import { ComponentsOfTypes, ComponentType } from "../component"
 import { arrayOf } from "../util"
-import { Storage } from "./storage_types"
+import { Storage, Archetype } from "./storage_types"
+import { Filter } from "./filter"
 
 export type Query<T extends ComponentType[]> = {
-  filter<F>(f: F): Query<T & F>
+  bind(storage: Storage): Query<T>
+  run(storage: Storage): IterableIterator<ComponentsOfTypes<T>>
+  filter(...filters: (Filter | number)[]): Query<T>
 }
 
-export function query<T extends ComponentType[]>(...types: ComponentType[]) {
-  const len = types.length
-  const unsafe_result = arrayOf(len) as ComponentsOfTypes<T>
-  const unsafe_flags = arrayOf(len) as number[]
+export function query<T extends ComponentType[]>(...selectors: T): Query<T> {
+  const len = selectors.length
+  const tmp_result = arrayOf<T>(len)
+  const tmp_flags = arrayOf<number>(len)
+  const tmp_filters = arrayOf<Filter>()
 
-  function filter(type: ComponentType) {
-    return query(...types, type)
+  let s: Storage
+  let tag = 0
+
+  function filter(...filters: (Filter | number)[]) {
+    for (let i = 0; i < filters.length; i++) {
+      const f = filters[i]
+      if (typeof f === "number") {
+        tag |= f
+      } else {
+        tmp_filters.push(f)
+      }
+    }
+
+    return query
   }
 
-  function* run(storage: Storage) {
+  function bind(storage: Storage) {
+    s = storage
+    return query
+  }
+
+  function* run(storage: Storage = s) {
     let filter = 0
 
+    if (!storage) {
+      throw new Error("Storage not provided.")
+    }
+
     for (let i = 0; i < len; i++) {
-      const flag = storage.flags[types[i].name]
-      unsafe_flags[i] = flag
+      const flag = storage.flags[selectors[i].name]
+      tmp_flags[i] = flag
       filter = filter | flag
     }
 
     for (const archetype of storage.archetypes.values()) {
       if ((archetype.filter & filter) === filter) {
-        yield* archetype.read(unsafe_flags, unsafe_result)
+        yield* (archetype as Archetype<T>).read(
+          tmp_flags,
+          tmp_result,
+          tag,
+          tmp_filters,
+        )
       }
     }
   }
 
-  return { run, filter }
+  const query = { bind, run, filter }
+
+  return query
 }

@@ -1,22 +1,14 @@
-import {
-  Component,
-  ComponentType,
-  InternalComponent,
-  Mutable,
-} from "../component"
-import { Entity } from "../entity"
+import { Component, ComponentType, InternalComponent } from "../component"
 import { createArchetype } from "./archetype"
-import { ChunkLocation, Storage, Archetype } from "./storage_types"
+import { Archetype, ChunkLocation, Storage } from "./storage_types"
 
 export function createStorage(size: number): Storage {
   const flags: { [name: string]: number } = {}
-  const archetypes = new Map<
-    number, // filter
-    Archetype
-  >()
+  // Archetypes by filter.
+  const archetypes = new Map<number, Archetype>()
+  // Chunk locations by number.
   const locations: ChunkLocation[] = []
 
-  let entity_seq = 1
   let flag_seq = 1
 
   function getFilter(components: InternalComponent[]) {
@@ -28,48 +20,57 @@ export function createStorage(size: number): Storage {
     let archetype = archetypes.get(filter)
 
     if (!archetype) {
-      const _flags: number[] = []
+      const aflags: { [name: string]: number } = {}
+      const layout: number[] = []
 
       for (let i = 0; i < components.length; i++) {
-        const c = components[i]
-        const f = flags[c.name]
+        const component = components[i]
+        const flag = flags[component.name]
 
-        if (!f) {
+        if (!flag) {
           throw new Error("Component type not registered.")
         }
 
-        _flags[i] = f
+        aflags[component.name] = flag
+        layout[i] = flag
       }
 
-      archetype = createArchetype(storage, _flags, size)
+      archetype = createArchetype(aflags, layout, size)
       archetypes.set(archetype.filter, archetype)
     }
 
     return archetype
   }
 
-  function insert(components: InternalComponent[]) {
-    const entity = entity_seq
+  function insert(key: number, components: InternalComponent[]) {
     const archetype = findOrCreateArchetype(components)
     const location = archetype.insert(components)
 
-    locations[entity] = location
-    entity_seq += 1
+    locations[key] = location
 
-    return entity
+    return key
   }
 
-  function remove(entity: Entity) {
-    const location = locations[entity]
+  function remove(key: number, ...components: Component[]) {
+    const location = locations[key]
 
     if (!location) {
-      throw new Error("Entity does not exist.")
+      throw new Error("number does not exist.")
     }
 
     const archetype = archetypes.get(location[0])
+    const chunk = archetype.remove(location)
 
-    archetype.remove(location)
-    locations[entity] = undefined
+    if (components.length > 0) {
+      const filter = getFilter(components)
+      const next = chunk.components.filter(
+        c => (flags[c.name] & filter) !== filter,
+      )
+      const archetype = findOrCreateArchetype(next)
+      locations[key] = archetype.insert(next)
+    } else {
+      locations[key] = undefined
+    }
   }
 
   function register(type: ComponentType) {
@@ -80,12 +81,25 @@ export function createStorage(size: number): Storage {
     flag_seq *= 2
   }
 
-  function mut<T extends Component>(component: T): Mutable<T> {
-    const location = locations[component.entity]
-    // TODO: Mark location as modified. Queue modified locations and reset
-    // on next maintain().
+  function bump(key: number) {
+    const location = locations[key]
+    const archetype = archetypes.get(location[0])
 
-    return component
+    archetype.bump(location)
+  }
+
+  function tag(key: number, tag: number) {
+    const location = locations[key]
+    const archetype = archetypes.get(location[0])
+
+    archetype.tag(location, tag)
+  }
+
+  function untag(key: number, tag: number) {
+    const location = locations[key]
+    const archetype = archetypes.get(location[0])
+
+    archetype.untag(location, tag)
   }
 
   const storage = {
@@ -94,7 +108,9 @@ export function createStorage(size: number): Storage {
     register,
     insert,
     remove,
-    mut,
+    tag,
+    untag,
+    bump,
   }
 
   return storage

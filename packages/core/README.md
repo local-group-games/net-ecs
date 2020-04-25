@@ -1,72 +1,63 @@
 # `@net-ecs/core`
 
-Core of net-ecs including world, entity, component, and system creation.
+Core of net-ecs including storage, entity, component, and query creation.
 
-## Usage
+## Example Usage
 
 ```ts
 import {
-  createEntityAdmin,
   createComponentType,
+  createStorage,
   createSystem,
-  With,
-  number
+  query,
+  number,
+  changed,
 } from "@net-ecs/core"
 
-const world = createEntityAdmin()
+const storage = createStorage()
 
-const Health = createComponentType({
+const Health = {
   name: "health",
   schema: {
     value: number,
   }
-})
+}
 
-const DamageOverTime = createComponentType(
+const DamageOverTime = {
   name: "damage_over_time",
   schema: {
     start: number,
     duration: number,
     damagePerSecond: number,
   },
-  initialize(component, duration: number, damagePerSecond: number, start: number) {
-    component.duration = duration
-    component.damagePerSecond = damagePerSecond
-    component.start = start
-  },
-)
+}
 
-const damage = createSystem({
-  name: "damage",
-  queries: [
-    [With(Health), With(DamageOverTime)],
-  ],
-  execute(world, entities) {
-    for (let i = 0; i < entities.length; i++) {
-      const entity = entities[i]
-      const health = world.getMutableComponent(entity, Health)
-      const { start, duration, damagePerSecond } = world.getComponent(
-        entity,
-        DamageOverTime,
-      )
+storage.register(Health)
+storage.register(DamageOverTime)
 
-      if (world.clock.time >= start + duration) {
-        world.removeComponent(entity, DamageOverTime)
-      } else {
-        health.value -= damagePerSecond * world.clock.step
-      }
+storage.insert([
+  { name: Health.name, value: 100 },
+  { name: DamageOverTime.name, ticks: 10, damage: 1 },
+])
 
-      if (health.value <= 0) {
-        world.deleteEntity(entity)
-      }
-    }
-  },
-})
+for (const [health, dot] of query(Health, DamageOverTime).run(storage)) {
+  mut(health).value -= dot.damage
+  mut(dot).ticks--
 
-const entity = world.createEntity()
+  if (dot.ticks <= 0) {
+    storage.remove(entity, DamageOverTime)
+  }
+}
 
-world.addSystem(damage)
-world.addComponent(entity, Health, 100)
-world.addComponent(entity, DamageOverTime, 1, 1, world.clock.time)
-world.tick(1)
+for (const [health] of query(Health).filter(changed).run(storage)) {
+  if (health.value <= 0) {
+    storage.remove(entity)
+  }
+}
+
+const [health] = Array.from(query(Health).run(storage))
+const dots = Array.from(query(DamageOverTime))
+
+console.assert(health.value === 99)
+console.assert(dots.length === 0)
 ```

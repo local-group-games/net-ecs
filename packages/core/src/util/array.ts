@@ -33,6 +33,11 @@ export function mutableEmpty(arr: any[]) {
   while (arr.length > 0) arr.pop()
 }
 
-export function arrayOf<T = void>(len: number, f: () => T = noop as () => T) {
-  return Array(len).fill(undefined).map(f)
+export function arrayOf<T = void>(
+  len: number = 0,
+  f: (i: number) => T = noop as () => T,
+) {
+  return Array(len)
+    .fill(undefined)
+    .map((_, i) => f(i))
 }

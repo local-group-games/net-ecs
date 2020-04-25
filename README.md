@@ -1,72 +1,85 @@
-  <img src="./assets/logo.png" width="120px" alt="need a better logo">
+  <img src="./assets/logo.png" width="120px" alt="net-ecs logo">
 
-A TypeScript Entity-Component-System with built-in network synchronization.
+A flexible TypeScript Entity-Component-System with built-in strategies for network synchronization.
 
-**NOTE: This code is untested, undocumented and is a work-in-progress.**
+**This project is an active work in progress.**
 
 ## Packages
 
-| Script                                      | Description                     |
-|---------------------------------------------|---------------------------------|
-| [@net-ecs/core](./packages/core)            | Core ECS components.            |
-| [@net-ecs/debug](./packages/debug)          | Developer tools built in React. |
-| [@net-ecs/client](./packages/client)        | The net-ecs browser client.     |
-| [@net-ecs/server](./packages/server)        | The net-ecs Node server.        |
-| [@net-ecs/example-client](./example/client) | Drones client.                  |
-| [@net-ecs/example-server](./example/server) | Drones server.                  |
+| Script                                      | Description                    |
+|---------------------------------------------|--------------------------------|
+| [@net-ecs/core](./packages/core)            | Core ECS                       |
+| [@net-ecs/debug](./packages/debug)          | Developer tools built in React |
+| [@net-ecs/client](./packages/client)        | The net-ecs browser client     |
+| [@net-ecs/server](./packages/server)        | The net-ecs Node server        |
+| [@net-ecs/example-client](./example/client) | Drones client                  |
+| [@net-ecs/example-server](./example/server) | Drones server                  |
 
 ## Scripts
 
 | Script                | Description                          |
 |-----------------------|--------------------------------------|
-| `yarn example:build`  | Build the example client and server. |
-| `yarn example:client` | Run the example client appliction.   |
-| `yarn example:server` | Run the example server application.  |
-| `yarn test`           | Run all tests.                       |
-| `yarn perf`           | Run all performance tests.           |
+| `yarn example:build`  | Build the example client and server  |
+| `yarn example:client` | Run the example client appliction    |
+| `yarn example:server` | Run the example server application   |
+| `yarn test`           | Run all tests                        |
+| `yarn perf`           | Run all performance tests            |
+
+## Features
+
+- **Performant**
+  * Entities are organized into unique [Archetypes](https://csherratt.github.io/blog/posts/specs-and-legion/) so filtering and iteration is pretty fast. See how it's implemented in the [storage module](./packages/core/src/storage).
+  * Unreliable components are assigned priorities that influence how often their instances are synchronized.
+  * The maximum size of state updates is configurable.
+  * Clients establish an unreliable channel for ephemeral state updates and a reliable channel for critical messages.
+- **Extensible**
+  * Data-oriented design: no classes or inheritance.
+  * Tag entities with bit flags for quick filtering.
+  * Create custom filters for more complex scenarios like change detection.
+- **Unopinionated**
+  * net-ecs is modular. For example, a `World` instance is provided, but not required for most features.
+  * Bring your own component pooling.
+  * No lobby system, auto-reconnect, etc.
 
 ## Concepts
 
 ### ECS
-- Entities are integer ids.
-- Entities have a one-to-many relationship with components.
-- Components are JSON-serializable objects.
-- Systems query entities by entity state (e.g. edded, removed, components changed) and/or component state (e.g. mutated) and read/write component state each tick.
-
-### Networking
-
-- Clients establish an unreliable channel for ephemeral state updates and a reliable channel for critical messages.
-- Component types can be configured to use reliable or unreliable methods of synchronization.
-- Reliable components are synchronized immediately when they are modified.
-- Unreliable component types can be assigned priorities that influence how often their instances are synchronized.
-- The maximum size of state update messages is configurable.
+- Entities are integers.
+- Entities are associated with one or more components via a data structure called [`Storage`](./packages/core/src/storage).
+- Components are plain JS objects.
+- Systems are just functions in your application that iterate collections of components obtained by executing one or more queries.
 
 ### Performance
 
-- Components are pooled.
-- Entities are organized into unique [Archetypes](https://csherratt.github.io/blog/posts/specs-and-legion/) so iteration is fast. See how it's implemented in the [storage module](./packages/core/src/storage).
-
-Example `yarn perf` on a 2018 MacBook Pro where ~150k entities were iterated at ~60FPS:
+Example `yarn perf` on a 2018 MacBook Pro where ~150k entities were iterated per tick at a little under 60FPS:
 
 ```
-@net-ecs/core: entities   | 100000
-@net-ecs/core: components | 4
-@net-ecs/core: queries    | 4
-@net-ecs/core: ticks      | 100
-@net-ecs/core: register: 0.113ms
-@net-ecs/core: insert: 107.974ms
-@net-ecs/core: averaged 149800 entities iterated per 16.12ms tick
+========================================
+perf_storage
+========================================
+entities      | 100000
+components    | 4
+queries       | 4
+ticks         | 100
+iter_tick     | 151298
+avg_tick      | 20.55ms
+========================================
+perf_world
+========================================
+entities      | 100000
+components    | 2
+systems       | 2
+ticks         | 100
+iter_tick     | 102500
+total_changed | 150000
+avg_tick      | 15.04ms
 ```
-
-
 
 ## Roadmap to V1
-- [ ] API refinement
 - [ ] Documentation
-- [ ] Unit tests
+- [ ] Unit tests (30%)
 - [ ] Integration tests
-- [ ] Perf/load tests
-- [ ] Delta compression - only send changed state
+- [ ] Perf/load tests (20%)
 
 ## License
 Copyright 2020 Eric McDaniel

@@ -26,18 +26,8 @@ module.exports.run = function run() {
     [components[1], components[3]],
   ]
 
-  console.log(`entities   | ${entities.length}`)
-  console.log(`components | ${components.length}`)
-  console.log(`queries    | ${queries.length}`)
-  console.log(`ticks      | ${n}`)
-
-  console.time("register")
   components.forEach(storage.register)
-  console.timeEnd("register")
-
-  console.time("insert")
-  entities.forEach(storage.insert)
-  console.timeEnd("insert")
+  entities.forEach((c, i) => storage.insert(i, c))
 
   let i = n
   let c = 0
@@ -46,12 +36,17 @@ module.exports.run = function run() {
   while (i >= 0) {
     for (let j = 0; j < queries.length; j++) {
       for (const [] of query(...queries[j]).run(storage)) {
-        if (i === n) c++
+        c++
       }
     }
     i--
   }
   const end = Date.now()
 
-  console.log(`averaged ${c} entities iterated per ${(end - start) / n}ms tick`)
+  console.log(`entities      | ${entities.length}`)
+  console.log(`components    | ${components.length}`)
+  console.log(`queries       | ${queries.length}`)
+  console.log(`ticks         | ${n}`)
+  console.log(`iter_tick     | ${c / n}`)
+  console.log(`avg_tick      | ${(end - start) / n}ms`)
 }
