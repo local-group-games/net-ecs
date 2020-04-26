@@ -1,9 +1,0 @@
-{
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "outDir": "lib",
-    "module": "commonjs",
-    "typeRoots": ["./src/types", "./node_modules/@types"]
-  },
-  "exclude": ["**/*.spec.ts", "**/*.spec.tsx"]
-}

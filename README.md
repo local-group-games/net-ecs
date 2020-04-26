@@ -8,7 +8,7 @@ A flexible TypeScript Entity-Component-System with built-in strategies for netwo
 
 | Script                                      | Description                    |
 |---------------------------------------------|--------------------------------|
-| [@net-ecs/core](./packages/core)            | Core ECS                       |
+| [@net-ecs/ecs](./packages/ecs)              | Core ECS                       |
 | [@net-ecs/debug](./packages/debug)          | Developer tools built in React |
 | [@net-ecs/client](./packages/client)        | The net-ecs browser client     |
 | [@net-ecs/server](./packages/server)        | The net-ecs Node server        |
@@ -28,7 +28,7 @@ A flexible TypeScript Entity-Component-System with built-in strategies for netwo
 ## Features
 
 - **Performant**
-  * Entities are organized into unique [Archetypes](https://csherratt.github.io/blog/posts/specs-and-legion/) so filtering and iteration is pretty fast. See how it's implemented in the [storage module](./packages/core/src/storage).
+  * Entities are organized into unique [Archetypes](https://csherratt.github.io/blog/posts/specs-and-legion/) so filtering and iteration is pretty fast. See how it's implemented in the [storage module](./packages/ecs/src/storage).
   * Unreliable components are assigned priorities that influence how often their instances are synchronized.
   * The maximum size of state updates is configurable.
   * Clients establish an unreliable channel for ephemeral state updates and a reliable channel for critical messages.
@@ -45,13 +45,13 @@ A flexible TypeScript Entity-Component-System with built-in strategies for netwo
 
 ### ECS
 - Entities are integers.
-- Entities are associated with one or more components via a data structure called [`Storage`](./packages/core/src/storage).
+- Entities are associated with one or more components via a data structure called [`Storage`](./packages/ecs/src/storage).
 - Components are plain JS objects.
 - Systems are just functions in your application that iterate collections of components obtained by executing one or more queries.
 
 ### Performance
 
-Example `yarn perf` on a 2018 MacBook Pro where ~150k entities were iterated per tick at a little under 60FPS:
+Example `yarn perf` on a 2018 MacBook Pro where ~150k entities were iterated per tick at 60FPS:
 
 ```
 ========================================
@@ -62,7 +62,7 @@ components    | 4
 queries       | 4
 ticks         | 100
 iter_tick     | 151298
-avg_tick      | 20.55ms
+avg_tick      | 16.15ms
 ========================================
 perf_world
 ========================================
@@ -72,7 +72,7 @@ systems       | 2
 ticks         | 100
 iter_tick     | 102500
 total_changed | 150000
-avg_tick      | 15.04ms
+avg_tick      | 11.91ms
 ```
 
 ## Roadmap to V1

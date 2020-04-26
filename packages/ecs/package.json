@@ -1,0 +1,29 @@
+{
+  "name": "@net-ecs/ecs",
+  "version": "0.0.0",
+  "description": "> TODO: description",
+  "author": "Eric McDaniel <eric.g.mcdaniel@gmail.com>",
+  "homepage": "",
+  "license": "ISC",
+  "main": "dist/index.js",
+  "directories": {
+    "dist": "dist",
+    "src": "src"
+  },
+  "files": [
+    "src"
+  ],
+  "types": "src",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "jest --config ../../jest.config.js",
+    "build": "tsc",
+    "docs": "typedoc --out docs src",
+    "perf": "yarn build && node perf/index.js"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^1.12.0"
+  }
+}

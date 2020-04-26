@@ -1,54 +1,17 @@
 {
   "name": "@net-ecs/example-client",
   "version": "0.0.0",
-  "description": "> TODO: description",
-  "author": "Eric McDaniel <eric.g.mcdaniel@gmail.com>",
-  "homepage": "",
-  "license": "ISC",
-  "main": "dist/index.js",
-  "types": "src/index.tsx",
-  "directories": {
-    "src": "src"
-  },
-  "files": [
-    "src"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
+  "main": "index.js",
+  "license": "MIT",
   "dependencies": {
-    "@gamestdio/mathf": "^1.0.1",
-    "@net-ecs/client": "^0.0.0",
-    "@net-ecs/core": "^0.0.0",
-    "@net-ecs/debug": "^0.0.0",
-    "@net-ecs/example-server": "^1.0.0",
-    "pixi.js": "^5.2.0",
-    "react": "^16.12.0",
-    "react-dom": "^16.12.0",
-    "victor": "^1.1.0"
-  },
-  "devDependencies": {
-    "@types/react": "^16.9.17",
-    "@types/react-dom": "^16.9.4",
-    "@types/victor": "^1.1.0",
-    "customize-cra": "^0.9.1",
-    "react-app-rewired": "^2.1.5",
-    "react-scripts": "^3.3.0"
+    "@net-ecs/ecs": "^0.0.0",
+    "pixi.js": "^5.2.3",
+    "ts-loader": "^7.0.1",
+    "webpack": "^4.43.0",
+    "webpack-cli": "^3.3.11"
   },
   "scripts": {
-    "build": "react-app-rewired build",
-    "start": "react-app-rewired start"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+    "build": "webpack",
+    "start": "yarn build && open index.html"
   }
 }

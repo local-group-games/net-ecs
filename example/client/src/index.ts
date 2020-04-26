@@ -1,125 +1,128 @@
-import { createNetEcsClient } from "@net-ecs/client"
-import { Entity } from "@net-ecs/core"
-import {
-  Drone,
-  ExampleMessage,
-  ExampleMessageType,
-  Transform,
-} from "@net-ecs/example-server"
-import {
-  Color,
-  ExampleServerInfo,
-  InputBuffer,
-  InterpolationBuffer,
-  RenderTransform,
-} from "./components"
-import { debug } from "./debug"
-import { app } from "./graphics"
-import {
-  colorTransition,
-  createExampleServerInfoSystem,
-  createInputSystem,
-  interpolation,
-  reconciliation,
-  render,
-} from "./systems"
+// @ts-nocheck
+import { createWorld, SystemAPI, query, Chunk } from "@net-ecs/ecs"
+import { graphics } from "./graphics"
 
-const client = createNetEcsClient({
-  url: `ws://${window.location.hostname}:9000`,
-  world: {
-    componentTypes: [
-      // Core
-      Transform,
-      Drone,
-      // Client
-      ExampleServerInfo,
-      Color,
-      InterpolationBuffer,
-      InputBuffer,
-      RenderTransform,
-    ],
-    systems: [
-      // Client
-      reconciliation,
-      colorTransition,
-      interpolation,
-      render,
-    ],
+const position = { name: "position" }
+const velocity = { name: "velocity" }
+
+enum Tags {
+  Normal = 1,
+  Special = 2,
+  Awake = 4,
+}
+
+const size = 4
+const floorSize = 10
+const floorOffset = 600 - size - floorSize
+
+const movementQuery = query(position, velocity).filter(Tags.Awake)
+const movement = (dt: number, { mut, storage, untag }: SystemAPI<number>) => {
+  for (let [p, v] of movementQuery.run(storage)) {
+    p = mut(p)
+
+    const { x, y } = p
+
+    p.x += v.x
+    p.y += v.y
+
+    // put entities to sleep that haven't moved recently
+    if (Math.abs(x - p.x) < 0.05 && Math.abs(y - p.y) < 0.05) {
+      p.sleep += 1
+      if (p.sleep >= 5) {
+        untag(v.entity, Tags.Awake)
+        continue
+      }
+    } else {
+      p.sleep = 0
+    }
+
+    if (v.y > 0 && p.y >= floorOffset) {
+      v = mut(v)
+      // bounce and restitution
+      v.y = -(v.y * 0.5)
+      v.x *= 0.5
+      // snap
+      p.y = floorOffset
+      continue
+    }
+  }
+}
+const gravityQuery = query(velocity).filter(Tags.Awake)
+const gravity = (dt: number, { mut, storage }: SystemAPI<number>) => {
+  for (let [v] of gravityQuery.run(storage)) {
+    v = mut(v)
+    v.y += 0.1
+  }
+}
+
+const renderFilter = {
+  matchChunkSet() {
+    return true
   },
-})
+  matchChunk(chunk: Chunk) {
+    for (let i = 0; i < chunk.components.length; i++) {
+      const component = chunk.components[i]
 
-debug.attach(client.world)
-
-function onEntitiesCreated(entities: Entity[]) {
-  debug.log.info(`created entities: ${entities.join(", ")}`)
-
-  for (let i = 0; i < entities.length; i++) {
-    const entity = entities[i]
-    const transform = client.world.tryGetComponent(entity, Transform)
-
-    if (transform) {
-      client.world.addComponent(entity, InterpolationBuffer)
-      client.world.addComponent(
-        entity,
-        RenderTransform,
-        transform.x,
-        transform.y,
-      )
+      if (component.x <= 800 && component.y <= 600) {
+        return true
+      }
     }
+
+    return false
+  },
+}
+const renderQuery = query(position).filter(renderFilter, Tags.Normal)
+const renderSpecialQuery = query(position).filter(renderFilter, Tags.Special)
+const render = (dt: number, { storage }: SystemAPI<number>) => {
+  graphics.clear()
+
+  for (const [p] of renderQuery.run(storage)) {
+    graphics.beginFill(0xffffff)
+    graphics.drawRect(p.x, p.y, 4, 4)
+    graphics.endFill()
+  }
+  for (const [p] of renderSpecialQuery.run(storage)) {
+    graphics.beginFill(0xff0000)
+    graphics.drawRect(p.x, p.y, 4, 4)
+    graphics.endFill()
   }
 }
-function onEntitiesDeleted(entities: Entity[]) {
-  debug.log.info(`deleted entities: ${entities.join(", ")}`)
-}
 
-async function main() {
-  ;(window as any).client = client
+const world = createWorld([gravity, movement, render])
 
-  const input = createInputSystem(client)
-  const exampleServerInfoEntity = client.world.createSingletonComponent(
-    ExampleServerInfo,
-  )
+world.register(position)
+world.register(velocity)
 
-  client.world.createSingletonComponent(Color)
-  client.world.createSingletonComponent(InputBuffer)
+let i = 0
 
-  client.world.addSystem(input)
-  client.world.addSystem(createExampleServerInfoSystem(client))
-
-  function onMessageReceived(message: ExampleMessage) {
-    const serverInfo = client.world.getMutableComponent(
-      exampleServerInfoEntity,
-      ExampleServerInfo,
+const interval = setInterval(() => {
+  for (let i = 0; i < 100; i++) {
+    world.create(
+      [
+        {
+          name: "position",
+          x: Math.random() * 20,
+          y: Math.random() * 20,
+          sleep: 1,
+        },
+        { name: "velocity", x: Math.random() * 10, y: Math.random() * 10 },
+      ],
+      (Math.random() > 0.5 ? Tags.Special : Tags.Normal) | Tags.Awake,
     )
-
-    switch (message[0]) {
-      case ExampleMessageType.ServerInfo: {
-        const { sendRate, tickRate } = message[1]
-        debug.log.info(
-          `server info: sendRate=${sendRate}, tickRate=${tickRate}`,
-        )
-        serverInfo.sendRate = sendRate
-        serverInfo.tickRate = tickRate
-        break
-      }
-      case ExampleMessageType.ClientEntity: {
-        const entity = message[1]
-        debug.log.info(`remote client entity: ${entity}`)
-        serverInfo.remoteClientEntity = entity
-        break
-      }
-    }
   }
+  i++
 
-  client.entitiesCreated.subscribe(onEntitiesCreated)
-  client.entitiesDeleted.subscribe(onEntitiesDeleted)
-  client.messageReceived.subscribe(onMessageReceived)
+  if (i >= 100) {
+    clearInterval(interval)
+  }
+}, 100)
 
-  app.ticker.add(() => client.world.tick(app.ticker.deltaMS))
+let t = 0
 
-  debug.log.info("connecting to master server")
-  await client.initialize()
-  debug.log.info("connected to master server")
+function loop(ts: number = t) {
+  world.tick(t - ts)
+  t = ts
+  requestAnimationFrame(loop)
 }
 
-main()
+loop()

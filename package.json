@@ -22,5 +22,6 @@
     "postinstall": "lerna bootstrap",
     "test": "lerna run test --stream",
     "perf": "lerna run perf --stream"
-  }
+  },
+  "workspaces": ["packages/*", "example/*"]
 }

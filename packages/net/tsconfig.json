@@ -2,8 +2,8 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "dist",
-    "typeRoots": ["./src/types"],
-    "sourceMap": true
+    "module": "commonjs",
+    "typeRoots": ["./src/types"]
   },
   "exclude": ["**/*.spec.ts", "**/*.spec.tsx"]
 }
