@@ -40,6 +40,10 @@ export function query<T extends ComponentType[]>(...selectors: T): Query<T> {
       filter = filter | flag
     }
 
+    for (let i = 0; i < tmpFilters.length; i++) {
+      tmpFilters[i].bind(storage)
+    }
+
     for (const archetype of storage.archetypes.values()) {
       if ((archetype.filter & filter) === filter) {
         yield* (archetype as Archetype<T>).read(tmpFlags, tmpFilters, tmpResult)

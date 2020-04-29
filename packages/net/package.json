@@ -1,10 +1,14 @@
 {
   "name": "@net-ecs/net",
   "version": "0.0.0",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "src",
   "license": "MIT",
   "dependencies": {
     "@msgpack/msgpack": "^1.12.1",
     "@net-ecs/ecs": "^0.0.0"
+  },
+  "scripts": {
+    "build": "tsc"
   }
 }

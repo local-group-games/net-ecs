@@ -5,7 +5,7 @@
   "main": "index.js",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^13.9.8",
+    "@types/node": "^13.13.4",
     "typedoc": "^0.17.4"
   },
   "dependencies": {
@@ -23,5 +23,8 @@
     "test": "lerna run test --stream",
     "perf": "lerna run perf --stream"
   },
-  "workspaces": ["packages/*", "example/*"]
+  "workspaces": [
+    "packages/*",
+    "example/*"
+  ]
 }

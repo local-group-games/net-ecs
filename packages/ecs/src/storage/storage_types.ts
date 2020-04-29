@@ -11,13 +11,11 @@ export type ChunkLocation = [
 export type Chunk<T extends ComponentType[] = ComponentType[]> = {
   tag: number
   components: ComponentsOf<T>
-  version: number
 }
 
 export type ChunkSet<T extends ComponentType[] = ComponentType[]> = {
   tag: number
   chunks: Chunk<T>[]
-  version: number
 }
 
 export type Archetype<T extends ComponentType[] = ComponentType[]> = {
@@ -32,17 +30,19 @@ export type Archetype<T extends ComponentType[] = ComponentType[]> = {
   ): Generator<ComponentsOf<T>>
   tag(location: ChunkLocation, tag: number): void
   untag(location: ChunkLocation, tag: number): void
-  bump(location: ChunkLocation): void
 }
 
 export type Storage = {
   archetypes: ReadonlyMap<number, Archetype>
-  bump(entity: Entity): void
+  incrementVersion(component: Component): void
+  getVersion(component: Component): number
   flags: { [name: string]: number }
   insert(entity: Entity, components: Component[]): Entity
   register(type: ComponentType): void
+  add(entity: Entity, ...components: Component[]): void
   remove(entity: Entity, ...components: Component[]): void
   tag(entity: Entity, tag: number): void
   untag(entity: Entity, tag: number): void
   getComponents(entity: Entity): Component[]
+  exists(entity: Entity): boolean
 }

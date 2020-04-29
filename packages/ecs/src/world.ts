@@ -81,7 +81,7 @@ export const createWorld = <T>(systems: System<T>[]): World<T> => {
   }
 
   function mut<T extends ReadonlyComponent>(component: T) {
-    storage.bump(component.entity)
+    storage.incrementVersion(component)
     return component as Mutable<T>
   }
 

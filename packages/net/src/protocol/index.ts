@@ -11,23 +11,6 @@ export enum MessageType {
 export type Message<T extends number = number, P = any> = [T, P, boolean]
 export type CustomMessage<T extends number = number, P = any> = [T, P, false]
 
-export type StateUpdateMessage = Message<
-  MessageType.StateUpdate,
-  (number | Component)[]
->
-export type EntitiesCreatedMessage = Message<
-  MessageType.EntitiesCreated,
-  ReadonlyArray<Entity>
->
-export type EntitiesDeletedMessage = Message<
-  MessageType.EntitiesDeleted,
-  ReadonlyArray<Entity>
->
-export type ComponentRemovedMessage = Message<
-  MessageType.ComponentRemoved,
-  (Entity | string)[]
->
-
 export function createMessageHelper<T extends number, A extends any[], P>(
   type: T,
   fn: (...args: A) => P,
@@ -57,7 +40,7 @@ export const protocol = {
   ),
   entitiesCreated: createMessageHelper(
     MessageType.EntitiesCreated,
-    (payload: (Entity | Component)[]) => payload,
+    (payload: Component[][]) => payload,
   ),
   entitiesDeleted: createMessageHelper(
     MessageType.EntitiesDeleted,
@@ -67,25 +50,6 @@ export const protocol = {
     MessageType.ComponentRemoved,
     (payload: (Entity | string)[]) => payload,
   ),
-}
-
-export function insertCreatedSegment(
-  payload: (Entity | Component)[],
-  entity: Entity,
-  storage: Storage,
-  include: string[],
-) {
-  const components = storage.getComponents(entity)
-
-  payload.push(entity)
-
-  for (let j = 0; j < components.length; j++) {
-    const component = components[j]
-
-    if (include.includes(component.name)) {
-      payload.push(components[j])
-    }
-  }
 }
 
 export type ExtractProtocolMessageTypes<

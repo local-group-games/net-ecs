@@ -8,6 +8,8 @@ export function createStorage(size: number): Storage {
   const archetypes = new Map<number, Archetype>()
   // Chunk locations by number.
   const locations: ChunkLocation[] = []
+  // Component versions.
+  const versions = new WeakMap<Component, number>()
 
   let flagsSeq = 1
 
@@ -51,11 +53,42 @@ export function createStorage(size: number): Storage {
     return key
   }
 
+  function add(key: number, ...components: Component[]) {
+    const location = locations[key]
+
+    if (!location) {
+      return
+    }
+
+    const archetype = archetypes.get(location[0])
+    const chunk = archetype.get(location)
+    const next = chunk.components.slice()
+
+    let remove = false
+
+    for (let i = 0; i < components.length; i++) {
+      const component = components[i]
+      const idx = next.findIndex(c => c.name === component.name)
+
+      if (idx > -1) {
+        Object.assign(next[idx], component)
+      } else {
+        remove = true
+        next.push(component)
+      }
+    }
+
+    if (remove) {
+      archetype.remove(location)
+      locations[key] = findOrCreateArchetype(next).insert(next)
+    }
+  }
+
   function remove(key: number, ...components: Component[]) {
     const location = locations[key]
 
     if (!location) {
-      throw new Error("number does not exist.")
+      throw new Error("Key does not exist.")
     }
 
     const archetype = archetypes.get(location[0])
@@ -66,8 +99,9 @@ export function createStorage(size: number): Storage {
       const next = chunk.components.filter(
         c => (flags[c.name] & filter) !== filter,
       )
-      const archetype = findOrCreateArchetype(next)
-      locations[key] = archetype.insert(next)
+      const target = findOrCreateArchetype(next)
+
+      locations[key] = target.insert(next)
     } else {
       locations[key] = undefined
     }
@@ -81,11 +115,17 @@ export function createStorage(size: number): Storage {
     flagsSeq *= 2
   }
 
-  function bump(key: number) {
-    const location = locations[key]
-    const archetype = archetypes.get(location[0])
+  function incrementVersion(component: Component) {
+    const currVersion = versions.get(component) || 0
+    const nextVersion = currVersion + 1
 
-    archetype.bump(location)
+    versions.set(component, nextVersion)
+
+    return nextVersion
+  }
+
+  function getVersion(component: Component) {
+    return versions.get(component) || 0
   }
 
   function tag(key: number, tag: number) {
@@ -102,9 +142,17 @@ export function createStorage(size: number): Storage {
     archetype.untag(location, tag)
   }
 
+  function exists(key: number) {
+    return !!locations[key]
+  }
+
   function getComponents(key: number) {
     const location = locations[key]
     const archetype = archetypes.get(location[0])
+
+    if (!archetype.get(location)) {
+      debugger
+    }
 
     return archetype.get(location).components
   }
@@ -114,11 +162,14 @@ export function createStorage(size: number): Storage {
     flags,
     register,
     insert,
+    add,
     remove,
     tag,
     untag,
-    bump,
+    getVersion,
+    incrementVersion,
     getComponents,
+    exists,
   }
 
   return storage

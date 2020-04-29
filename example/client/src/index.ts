@@ -1,121 +1,42 @@
-// @ts-nocheck
-import { createWorld, SystemAPI, query, Chunk } from "@net-ecs/ecs"
+import { decode } from "@msgpack/msgpack"
+import { Chunk, createWorld, query, SystemAPI, Component } from "@net-ecs/ecs"
+import { position, velocity, health } from "@net-ecs/example-server"
+import { MessageType, NetEcsMessage } from "@net-ecs/net"
+import { Client } from "@web-udp/client"
 import { graphics } from "./graphics"
 
-const position = { name: "position" }
-const velocity = { name: "velocity" }
-
-enum Tags {
-  Normal = 1,
-  Special = 2,
-  Awake = 4,
-}
-
-const size = 4
-const floorSize = 10
-const floorOffset = 600 - size - floorSize
-
-const movementQuery = query(position, velocity).filter(Tags.Awake)
-const movement = (dt: number, { mut, storage, untag }: SystemAPI<number>) => {
-  for (let [p, v] of movementQuery.run(storage)) {
-    p = mut(p)
-
-    const { x, y } = p
-
-    p.x += v.x
-    p.y += v.y
-
-    // put entities to sleep that haven't moved recently
-    if (Math.abs(x - p.x) < 0.05 && Math.abs(y - p.y) < 0.05) {
-      p.sleep += 1
-      if (p.sleep >= 5) {
-        untag(v.entity, Tags.Awake)
-        continue
-      }
-    } else {
-      p.sleep = 0
-    }
-
-    if (v.y > 0 && p.y >= floorOffset) {
-      v = mut(v)
-      // bounce and restitution
-      v.y = -(v.y * 0.5)
-      v.x *= 0.5
-      // snap
-      p.y = floorOffset
-      continue
-    }
-  }
-}
-const gravityQuery = query(velocity).filter(Tags.Awake)
-const gravity = (dt: number, { mut, storage }: SystemAPI<number>) => {
-  for (let [v] of gravityQuery.run(storage)) {
-    v = mut(v)
-    v.y += 0.1
-  }
-}
+const udp = new Client({
+  url: `ws://${window.location.hostname}:8000`,
+})
 
 const renderFilter = {
+  bind() {},
   matchChunkSet() {
     return true
   },
-  matchChunk(chunk: Chunk) {
-    for (let i = 0; i < chunk.components.length; i++) {
-      const component = chunk.components[i]
-
-      if (component.x <= 800 && component.y <= 600) {
-        return true
-      }
-    }
-
-    return false
+  matchChunk() {
+    return true
+  },
+  matchComponent(component: Component) {
+    return component.x <= 800 && component.y <= 600
   },
 }
-const renderQuery = query(position).filter(renderFilter, Tags.Normal)
-const renderSpecialQuery = query(position).filter(renderFilter, Tags.Special)
+const renderQuery = query(position).filter(renderFilter)
 const render = (dt: number, { storage }: SystemAPI<number>) => {
   graphics.clear()
 
   for (const [p] of renderQuery.run(storage)) {
-    graphics.beginFill(0xffffff)
-    graphics.drawRect(p.x, p.y, 4, 4)
-    graphics.endFill()
-  }
-  for (const [p] of renderSpecialQuery.run(storage)) {
-    graphics.beginFill(0xff0000)
-    graphics.drawRect(p.x, p.y, 4, 4)
+    graphics.beginFill(0x00ff00)
+    graphics.drawRect(p.x, p.y, 2, 2)
     graphics.endFill()
   }
 }
 
-const world = createWorld([gravity, movement, render])
+const world = createWorld([render])
 
 world.register(position)
 world.register(velocity)
-
-let i = 0
-
-const interval = setInterval(() => {
-  for (let i = 0; i < 100; i++) {
-    world.create(
-      [
-        {
-          name: "position",
-          x: Math.random() * 20,
-          y: Math.random() * 20,
-          sleep: 1,
-        },
-        { name: "velocity", x: Math.random() * 10, y: Math.random() * 10 },
-      ],
-      (Math.random() > 0.5 ? Tags.Special : Tags.Normal) | Tags.Awake,
-    )
-  }
-  i++
-
-  if (i >= 100) {
-    clearInterval(interval)
-  }
-}, 100)
+world.register(health)
 
 let t = 0
 
@@ -125,4 +46,71 @@ function loop(ts: number = t) {
   requestAnimationFrame(loop)
 }
 
-loop()
+const sessionId = localStorage.getItem("sessionId") || Math.random().toString()
+localStorage.setItem("sessionId", sessionId)
+
+async function main() {
+  const reliable = await udp.connect({
+    binaryType: "arraybuffer",
+    UNSAFE_ordered: true,
+    metadata: { sessionId, reliable: true },
+  })
+  const unreliable = await udp.connect({
+    binaryType: "arraybuffer",
+    metadata: { sessionId, reliable: false },
+  })
+  const remoteToLocal = new Map<number, number>()
+
+  function onMessage(data: ArrayBuffer) {
+    const message = decode(data) as NetEcsMessage
+
+    switch (message[0]) {
+      case MessageType.ComponentRemoved:
+        break
+      case MessageType.EntitiesCreated: {
+        const entities = message[1]
+
+        for (let i = 0; i < entities.length; i++) {
+          const components = entities[i]
+          const remote = components[0].entity!
+          const entity = world.create(components)
+
+          remoteToLocal.set(remote, entity)
+        }
+        break
+      }
+      case MessageType.EntitiesDeleted: {
+        const entities = message[1]
+
+        for (let i = 0; i < entities.length; i++) {
+          world.remove(entities[i])
+        }
+        break
+      }
+      case MessageType.StateUpdate: {
+        const update = message[1][0]
+
+        for (let i = 0; i < update.length; i++) {
+          const component = update[i]
+          const entity = remoteToLocal.get(component.entity)
+
+          if (!entity) {
+            continue
+          }
+
+          component.entity = entity
+          world.storage.add(entity, component)
+        }
+        break
+      }
+    }
+  }
+
+  reliable.messages.subscribe(onMessage)
+  unreliable.messages.subscribe(onMessage)
+
+  loop()
+}
+
+main()
+;(window as any).world = world

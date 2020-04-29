@@ -1,12 +1,11 @@
-import { ComponentsOf, ComponentType } from "../component"
-import { mutableRemoveUnordered } from "../util/array"
+import { ComponentsOf, ComponentType, Component } from "../component"
+import { mutableRemoveUnordered, mutableRemove } from "../util/array"
 import { Filter } from "./filter"
 import { Archetype, Chunk, ChunkLocation, ChunkSet } from "./storage_types"
 
 function createChunkSet<T extends ComponentType[]>(): ChunkSet<T> {
   return {
     tag: 0,
-    version: 1,
     chunks: [],
   }
 }
@@ -39,11 +38,7 @@ export function createArchetype<T extends ComponentType[]>(
       setIdx = sets.push(set) - 1
     }
 
-    const chunk: Chunk<T> = {
-      tag: 0,
-      version: 1,
-      components,
-    }
+    const chunk: Chunk<T> = { tag: 0, components }
     const chunkIdx = set.chunks.push(chunk) - 1
 
     return [filter, setIdx, chunkIdx]
@@ -54,7 +49,7 @@ export function createArchetype<T extends ComponentType[]>(
     const set = sets[setIdx]
     const chunk = set.chunks[chunkIdx]
 
-    mutableRemoveUnordered(set.chunks, chunk)
+    set.chunks[chunkIdx] = null
 
     return chunk
   }
@@ -74,7 +69,7 @@ export function createArchetype<T extends ComponentType[]>(
 
       let match = true
       for (let _ = 0; _ < filters.length; _++) {
-        if (!filters[_].matchChunkSet(set)) {
+        if (!filters[_].matchChunkSet(set, archetype)) {
           match = false
           break
         }
@@ -86,9 +81,13 @@ export function createArchetype<T extends ComponentType[]>(
       for (let j = 0; j < chunks.length; j++) {
         const chunk = chunks[j]
 
+        if (!chunk) {
+          continue
+        }
+
         let match = true
         for (let _ = 0; _ < filters.length; _++) {
-          if (!filters[_].matchChunk(chunk)) {
+          if (!filters[_].matchChunk(chunk, archetype)) {
             match = false
             break
           }
@@ -106,17 +105,13 @@ export function createArchetype<T extends ComponentType[]>(
     }
   }
 
-  function bump(location: ChunkLocation) {
-    const set = sets[location[1]]
-    const chunk = set.chunks[location[2]]
-
-    set.version += 1
-    chunk.version += 1
-  }
-
   function tag(location: ChunkLocation, tag: number) {
     const set = sets[location[1]]
     const chunk = set.chunks[location[2]]
+
+    if (!chunk) {
+      return
+    }
 
     // Add tag to chunk set
     set.tag |= tag
@@ -126,29 +121,37 @@ export function createArchetype<T extends ComponentType[]>(
 
   function untag(location: ChunkLocation, tag: number) {
     const set = sets[location[1]]
+    const { chunks } = set
     const chunk = set.chunks[location[2]]
-
-    // Unset tag at set if no other chunks have tag
-    if (!set.chunks.some(c => tag & c.tag)) {
-      set.tag &= ~tag
-    }
 
     // Unset tag at chunk
     chunk.tag &= ~tag
+
+    for (let i = 0; i < chunks.length; i++) {
+      if (chunks[i] && chunks[i].tag & tag) {
+        return
+      }
+    }
+
+    // Unset tag at chunk set
+    set.tag &= ~tag
   }
 
-  function get([setIdx, chunkIdx]: ChunkLocation) {
+  function get(location: ChunkLocation) {
+    const [, setIdx, chunkIdx] = location
     return sets[setIdx].chunks[chunkIdx]
   }
 
-  return {
+  const archetype = {
+    sets,
     remove,
     insert,
     filter,
     read,
     tag,
     untag,
-    bump,
     get,
   }
+
+  return archetype
 }
